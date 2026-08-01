@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
-type SortKey = "name" | "speeches" | "amendments" | "pois"
+type SortKey = "delegation" | "name" | "speeches" | "amendments" | "pois"
 type SortDir = "asc" | "desc"
 
 const COUNTERS: {
@@ -63,7 +63,7 @@ export function ParticipationTracker({
   const [minSpeeches, setMinSpeeches] = useState(0)
   const [minAmendments, setMinAmendments] = useState(0)
   const [minPois, setMinPois] = useState(0)
-  const [sortKey, setSortKey] = useState<SortKey>("name")
+  const [sortKey, setSortKey] = useState<SortKey>("delegation")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [search, setSearch] = useState("")
 
@@ -76,12 +76,14 @@ export function ParticipationTracker({
         d.amendments >= minAmendments &&
         d.pois >= minPois &&
         (search.trim() === "" ||
+          d.delegation.toLowerCase().includes(search.trim().toLowerCase()) ||
           d.name.toLowerCase().includes(search.trim().toLowerCase()) ||
           d.school.toLowerCase().includes(search.trim().toLowerCase())),
     )
     const sorted = [...filtered].sort((a, b) => {
       let cmp = 0
-      if (sortKey === "name") cmp = a.name.localeCompare(b.name)
+      if (sortKey === "delegation") cmp = a.delegation.localeCompare(b.delegation)
+      else if (sortKey === "name") cmp = a.name.localeCompare(b.name)
       else cmp = a[sortKey] - b[sortKey]
       return sortDir === "asc" ? cmp : -cmp
     })
@@ -98,7 +100,7 @@ export function ParticipationTracker({
       <Card className="flex flex-col gap-4 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <Input
-            placeholder="Search name or school…"
+            placeholder="Search delegation, name, or school…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs"
@@ -111,6 +113,7 @@ export function ParticipationTracker({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="delegation">Delegation (A–Z)</SelectItem>
                 <SelectItem value="name">Name (A–Z)</SelectItem>
                 <SelectItem value="speeches">Speeches</SelectItem>
                 <SelectItem value="amendments">Amendments</SelectItem>
@@ -132,7 +135,7 @@ export function ParticipationTracker({
             <AddDelegateDialog
               onAdd={(d) => {
                 addDelegates(committeeId, [d])
-                toast.success(`Added ${d.name}.`)
+                toast.success(`Added ${d.delegation}.`)
               }}
             />
             <Button
@@ -197,7 +200,7 @@ export function ParticipationTracker({
               }
               onRemove={() => {
                 removeDelegate(committeeId, d.id)
-                toast.success(`Removed ${d.name}.`)
+                toast.success(`Removed ${d.delegation}.`)
               }}
             />
           ))}
@@ -243,9 +246,12 @@ function DelegateRow({
   return (
     <Card className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:gap-6">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">{delegate.name}</p>
+        <p className="truncate font-medium text-foreground">
+          {delegate.delegation || "—"}
+        </p>
         <p className="truncate text-sm text-muted-foreground">
-          {delegate.school || "—"}
+          {delegate.name}
+          {delegate.school ? ` · ${delegate.school}` : ""}
           {delegate.email ? ` · ${delegate.email}` : ""}
         </p>
       </div>
@@ -260,7 +266,7 @@ function DelegateRow({
               size="icon"
               variant="ghost"
               className="size-7"
-              aria-label={`Decrease ${label} for ${delegate.name}`}
+              aria-label={`Decrease ${label} for ${delegate.delegation}`}
               onClick={() => onIncrement(field, -1)}
               disabled={delegate[field] === 0}
             >
@@ -278,7 +284,7 @@ function DelegateRow({
             <Button
               size="icon"
               className="size-7"
-              aria-label={`Add ${label} for ${delegate.name}`}
+              aria-label={`Add ${label} for ${delegate.delegation}`}
               onClick={() => onIncrement(field, 1)}
             >
               <Plus className="size-3.5" />
@@ -296,7 +302,7 @@ function DelegateRow({
         <Button
           size="icon"
           variant="ghost"
-          aria-label={`Remove ${delegate.name}`}
+          aria-label={`Remove ${delegate.delegation}`}
           onClick={onRemove}
         >
           <Trash2 className="size-4 text-muted-foreground" />
@@ -309,19 +315,26 @@ function DelegateRow({
 function AddDelegateDialog({
   onAdd,
 }: {
-  onAdd: (d: { name: string; school: string; email: string }) => void
+  onAdd: (d: { delegation: string; name: string; school: string; email: string }) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [delegation, setDelegation] = useState("")
   const [name, setName] = useState("")
   const [school, setSchool] = useState("")
   const [email, setEmail] = useState("")
 
   function submit() {
-    if (!name.trim()) {
-      toast.error("Delegate name is required.")
+    if (!delegation.trim()) {
+      toast.error("Delegation (country) is required.")
       return
     }
-    onAdd({ name: name.trim(), school: school.trim(), email: email.trim() })
+    onAdd({
+      delegation: delegation.trim(),
+      name: name.trim(),
+      school: school.trim(),
+      email: email.trim(),
+    })
+    setDelegation("")
     setName("")
     setSchool("")
     setEmail("")
@@ -344,11 +357,20 @@ function AddDelegateDialog({
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="d-name">Name</Label>
-            <Input id="d-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <Label htmlFor="d-delegation">Delegation (country)</Label>
+            <Input
+              id="d-delegation"
+              value={delegation}
+              onChange={(e) => setDelegation(e.target.value)}
+              autoFocus
+            />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="d-school">School / Country</Label>
+            <Label htmlFor="d-name">Name</Label>
+            <Input id="d-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="d-school">School</Label>
             <Input id="d-school" value={school} onChange={(e) => setSchool(e.target.value)} />
           </div>
           <div className="flex flex-col gap-2">

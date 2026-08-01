@@ -9,9 +9,12 @@ import com.munhub.backend.model.DebateState;
 import com.munhub.backend.model.Delegate;
 import com.munhub.backend.repository.CommitteeRepository;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,9 +60,23 @@ public class CommitteeService {
 
   public Committee addDelegates(String committeeId, List<DelegateInput> inputs) {
     Committee committee = getCommittee(committeeId);
+
+    // Delegation is the natural key: a committee can't have two delegates
+    // representing the same country. Skip anything already present, and
+    // skip duplicates within the incoming batch itself.
+    Set<String> takenDelegations =
+        committee.getDelegates().stream()
+            .map(d -> d.getDelegation().trim().toLowerCase())
+            .collect(Collectors.toCollection(HashSet::new));
+
     for (DelegateInput input : inputs) {
+      String delegationKey = input.delegation().trim().toLowerCase();
+      if (!takenDelegations.add(delegationKey)) {
+        continue;
+      }
       Delegate delegate = new Delegate();
       delegate.setId(UUID.randomUUID().toString());
+      delegate.setDelegation(input.delegation().trim());
       delegate.setName(input.name());
       delegate.setSchool(input.school() == null ? "" : input.school());
       delegate.setEmail(input.email() == null ? "" : input.email());

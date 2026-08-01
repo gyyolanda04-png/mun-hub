@@ -152,10 +152,13 @@ export function PresentationMode({
               Current Speaker
             </span>
             <p className="font-serif text-5xl font-semibold text-balance md:text-7xl">
-              {speaker ? speaker.name : "—"}
+              {speaker ? speaker.delegation : "—"}
             </p>
-            {speaker?.school ? (
-              <p className="text-xl text-muted-foreground">{speaker.school}</p>
+            {speaker ? (
+              <p className="text-xl text-muted-foreground">
+                {speaker.name}
+                {speaker.school ? ` · ${speaker.school}` : ""}
+              </p>
             ) : null}
           </div>
 
@@ -176,9 +179,9 @@ export function PresentationMode({
                     <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-sm font-semibold tabular-nums text-secondary-foreground">
                       {i + 1}
                     </span>
-                    <span className="truncate font-medium">{d.name}</span>
+                    <span className="truncate font-medium">{d.delegation}</span>
                     <span className="ml-auto truncate text-sm text-muted-foreground">
-                      {d.school}
+                      {d.name}
                     </span>
                   </li>
                 ))}
@@ -264,7 +267,7 @@ export function PresentationMode({
                     ) : (
                       availableForQueue.map((d) => (
                         <SelectItem key={d.id} value={d.id}>
-                          {d.name}
+                          {d.delegation}
                         </SelectItem>
                       ))
                     )}

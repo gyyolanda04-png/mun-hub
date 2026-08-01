@@ -70,7 +70,7 @@ types.
 | POST | `/api/committees` | Create a committee — `{ "name": string, "topic": string }` |
 | GET | `/api/committees/{id}` | Get one committee |
 | DELETE | `/api/committees/{id}` | Delete a committee |
-| POST | `/api/committees/{id}/delegates` | Bulk-add delegates — `{ "delegates": [{ "name", "school", "email" }] }` |
+| POST | `/api/committees/{id}/delegates` | Bulk-add delegates — `{ "delegates": [{ "delegation", "name", "school", "email" }] }`. `delegation` (the country/delegation represented) is required and must be unique within the committee — inputs whose delegation already exists (in the committee or earlier in the same batch, case-insensitive) are silently skipped rather than duplicated |
 | DELETE | `/api/committees/{id}/delegates/{delegateId}` | Remove a delegate (also clears them from the debate's current speaker / queue) |
 | PATCH | `/api/committees/{id}/delegates/{delegateId}/counter` | Increment a counter — `{ "field": "speeches" \| "amendments" \| "pois", "delta": number }` |
 | PATCH | `/api/committees/{id}/debate` | Partially update debate state — send only the fields you want to change, e.g. `{ "stage": "general" }` or `{ "currentSpeakerId": null }` |
@@ -92,7 +92,7 @@ curl -X POST http://localhost:8080/api/committees \
   "topic": "Nuclear Non-Proliferation",
   "createdAt": 1234567890,
   "delegates": [
-    { "id": "uuid", "name": "Alice", "school": "Columbia", "email": "alice@x.com", "speeches": 0, "amendments": 0, "pois": 0 }
+    { "id": "uuid", "delegation": "Bangladesh", "name": "Alice", "school": "Columbia", "email": "alice@x.com", "speeches": 0, "amendments": 0, "pois": 0 }
   ],
   "debate": {
     "totalDuration": 180,
@@ -108,6 +108,17 @@ curl -X POST http://localhost:8080/api/committees \
   }
 }
 ```
+
+### `id` vs `delegation`
+
+Each delegate has both an `id` (a server-generated UUID) and a `delegation`
+(the country/committee seat they represent, e.g. `"Bangladesh"`). `id`
+stays the technical primary key — it's what `DebateState.currentSpeakerId`
+and `speakerQueue` reference, and those references aren't scoped to a
+committee, so they need to stay globally unique. `delegation` is the
+natural/business key: a committee can't have two delegates representing the
+same country, so it's enforced unique per committee and is how delegates
+are identified throughout the UI (in place of their name).
 
 ## Connecting the frontend
 

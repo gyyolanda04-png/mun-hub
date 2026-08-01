@@ -5,15 +5,27 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
-/** Mirrors the Delegate interface in the frontend's lib/types.ts. */
+/**
+ * Mirrors the Delegate interface in the frontend's lib/types.ts.
+ *
+ * <p>{@code id} remains the technical primary key (it's referenced bare,
+ * without a committee scope, by DebateState.currentSpeakerId/speakerQueue),
+ * but {@code delegation} is the natural/business key: CommitteeService
+ * enforces it's unique per committee, since a committee can't have two
+ * delegates representing the same country.
+ */
 @Entity
-@Table(name = "delegates")
+@Table(
+    name = "delegates",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"committee_id", "delegation"}))
 public class Delegate {
 
   @Id
   private String id;
 
+  private String delegation;
   private String name;
   private String school;
   private String email;
@@ -32,6 +44,14 @@ public class Delegate {
 
   public void setId(String id) {
     this.id = id;
+  }
+
+  public String getDelegation() {
+    return delegation;
+  }
+
+  public void setDelegation(String delegation) {
+    this.delegation = delegation;
   }
 
   public String getName() {

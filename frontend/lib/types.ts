@@ -1,5 +1,7 @@
 export interface Delegate {
   id: string
+  /** The country/delegation this delegate represents. Unique per committee. */
+  delegation: string
   name: string
   school: string
   email: string

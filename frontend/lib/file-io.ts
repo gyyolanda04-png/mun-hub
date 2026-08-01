@@ -2,13 +2,15 @@ import { read, utils, writeFile } from "xlsx"
 import type { Committee, Delegate } from "@/lib/types"
 
 export interface ParsedDelegate {
+  delegation: string
   name: string
   school: string
   email: string
 }
 
+const DELEGATION_KEYS = ["delegation", "country", "nation", "assigned country", "represented country"]
 const NAME_KEYS = ["name", "delegate", "delegate name", "fullname", "full name"]
-const SCHOOL_KEYS = ["school", "institution", "delegation", "country", "organisation", "organization"]
+const SCHOOL_KEYS = ["school", "institution", "organisation", "organization"]
 const EMAIL_KEYS = ["email", "e-mail", "mail", "email address"]
 
 function pick(row: Record<string, unknown>, keys: string[]): string {
@@ -29,7 +31,7 @@ function pick(row: Record<string, unknown>, keys: string[]): string {
   return ""
 }
 
-const HEADER_KEYS = [...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
+const HEADER_KEYS = [...DELEGATION_KEYS, ...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
 
 /**
  * Find the row that actually contains the column headers. Some exports
@@ -69,16 +71,25 @@ export async function parseDelegateFile(file: File): Promise<ParsedDelegate[]> {
 
   const parsed: ParsedDelegate[] = []
   for (const dataRow of dataRows) {
+    const isRowBlank = dataRow.every((cell) => String(cell ?? "").trim() === "")
+    if (isRowBlank) {
+      // A blank row after the roster has started usually marks the end of
+      // the delegate table (totals/notes/legend sections often follow).
+      if (parsed.length > 0) break
+      continue
+    }
+
     const row: Record<string, unknown> = {}
     headers.forEach((header, i) => {
       if (header) row[header] = dataRow[i] ?? ""
     })
 
+    const delegation = pick(row, DELEGATION_KEYS)
     const name = pick(row, NAME_KEYS)
     const school = pick(row, SCHOOL_KEYS)
     const email = pick(row, EMAIL_KEYS).replace(/^mailto:/i, "").trim()
-    if (!name && !school && !email) continue
-    parsed.push({ name: name || "Unnamed Delegate", school, email })
+    if (!delegation && !name && !school && !email) continue
+    parsed.push({ delegation, name: name || "Unnamed Delegate", school, email })
   }
   return parsed
 }
@@ -95,6 +106,7 @@ export function exportCommittee(
 ) {
   const list = delegates ?? committee.delegates
   const data = list.map((d) => ({
+    Delegation: d.delegation,
     "Delegate Name": d.name,
     School: d.school,
     Email: d.email,

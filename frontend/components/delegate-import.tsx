@@ -90,7 +90,7 @@ export function DelegateImport({ committeeId }: { committeeId: string }) {
         onChange={(e) => void handleFiles(e.target.files)}
       />
       <p className="text-xs text-muted-foreground/80">
-        Recognised columns: name / school (or country) / email
+        Recognised columns: delegation (country) / name / school / email
       </p>
     </div>
   )
