@@ -10,6 +10,7 @@ import com.munhub.backend.model.Delegate;
 import com.munhub.backend.repository.CommitteeRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,8 +59,14 @@ public class CommitteeService {
     committeeRepository.deleteById(id);
   }
 
-  public Committee addDelegates(String committeeId, List<DelegateInput> inputs) {
+  public Committee addDelegates(String committeeId, List<DelegateInput> inputs, List<String> attendanceSessions) {
     Committee committee = getCommittee(committeeId);
+
+    if (attendanceSessions != null) {
+      for (String session : attendanceSessions) {
+        addSessionIfNew(committee, session);
+      }
+    }
 
     // Delegation is the natural key: a committee can't have two delegates
     // representing the same country. Skip anything already present, and
@@ -83,10 +90,51 @@ public class CommitteeService {
       delegate.setSpeeches(0);
       delegate.setAmendments(0);
       delegate.setPois(0);
+      delegate.setAttendance(input.attendance() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(input.attendance()));
       delegate.setCommittee(committee);
       committee.getDelegates().add(delegate);
     }
     return committeeRepository.save(committee);
+  }
+
+  public Committee addAttendanceSession(String committeeId, String session) {
+    Committee committee = getCommittee(committeeId);
+    addSessionIfNew(committee, session);
+    return committeeRepository.save(committee);
+  }
+
+  public Committee removeAttendanceSession(String committeeId, String session) {
+    Committee committee = getCommittee(committeeId);
+    String trimmed = session.trim();
+    committee.getAttendanceSessions().removeIf(s -> s.equals(trimmed));
+    for (Delegate delegate : committee.getDelegates()) {
+      delegate.getAttendance().remove(trimmed);
+    }
+    return committeeRepository.save(committee);
+  }
+
+  public Committee setAttendance(String committeeId, String delegateId, String session, boolean present) {
+    Committee committee = getCommittee(committeeId);
+    String trimmed = session.trim();
+    if (!committee.getAttendanceSessions().contains(trimmed)) {
+      throw new NotFoundException("Unknown attendance session: " + trimmed);
+    }
+    Delegate delegate =
+        committee.getDelegates().stream()
+            .filter(d -> d.getId().equals(delegateId))
+            .findFirst()
+            .orElseThrow(() -> new NotFoundException("Delegate not found: " + delegateId));
+    delegate.getAttendance().put(trimmed, present);
+    return committeeRepository.save(committee);
+  }
+
+  private void addSessionIfNew(Committee committee, String session) {
+    if (session == null) return;
+    String trimmed = session.trim();
+    if (trimmed.isEmpty() || committee.getAttendanceSessions().contains(trimmed)) {
+      return;
+    }
+    committee.getAttendanceSessions().add(trimmed);
   }
 
   public Committee removeDelegate(String committeeId, String delegateId) {

@@ -24,7 +24,10 @@ interface StoreValue {
   getCommittee: (id: string) => Committee | undefined
   addDelegates: (
     committeeId: string,
-    delegates: Omit<Delegate, "id" | "speeches" | "amendments" | "pois">[],
+    delegates: (Omit<Delegate, "id" | "speeches" | "amendments" | "pois" | "attendance"> & {
+      attendance?: Record<string, boolean>
+    })[],
+    attendanceSessions?: string[],
   ) => void
   removeDelegate: (committeeId: string, delegateId: string) => void
   incrementCounter: (
@@ -34,6 +37,14 @@ interface StoreValue {
     delta: number,
   ) => void
   updateDebate: (committeeId: string, patch: Partial<DebateState>) => void
+  setAttendance: (
+    committeeId: string,
+    delegateId: string,
+    session: string,
+    present: boolean,
+  ) => void
+  addAttendanceSession: (committeeId: string, session: string) => void
+  removeAttendanceSession: (committeeId: string, session: string) => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -89,9 +100,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     getCommittee(id) {
       return committees.find((c) => c.id === id)
     },
-    addDelegates(committeeId, delegates) {
+    addDelegates(committeeId, delegates, attendanceSessions) {
+      const withAttendance = delegates.map((d) => ({ ...d, attendance: d.attendance ?? {} }))
       api
-        .addDelegates(committeeId, delegates)
+        .addDelegates(committeeId, withAttendance, attendanceSessions)
         .then(replaceCommittee)
         .catch((err) => {
           console.log("[mun-hub] failed to add delegates", err)
@@ -160,6 +172,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       api.updateDebate(committeeId, patch).catch((err) => {
         console.log("[mun-hub] failed to update debate state", err)
         toast.error("Failed to sync debate state with the server.")
+        setCommittees(previous)
+      })
+    },
+    setAttendance(committeeId, delegateId, session, present) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                delegates: c.delegates.map((d) =>
+                  d.id === delegateId
+                    ? { ...d, attendance: { ...d.attendance, [session]: present } }
+                    : d,
+                ),
+              }
+            : c,
+        ),
+      )
+      api.setAttendance(committeeId, delegateId, session, present).catch((err) => {
+        console.log("[mun-hub] failed to update attendance", err)
+        toast.error("Failed to sync attendance with the server.")
+        setCommittees(previous)
+      })
+    },
+    addAttendanceSession(committeeId, session) {
+      api
+        .addAttendanceSession(committeeId, session)
+        .then(replaceCommittee)
+        .catch((err) => {
+          console.log("[mun-hub] failed to add attendance session", err)
+          toast.error("Failed to add that session on the server.")
+        })
+    },
+    removeAttendanceSession(committeeId, session) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                attendanceSessions: c.attendanceSessions.filter((s) => s !== session),
+                delegates: c.delegates.map((d) => {
+                  const { [session]: _removed, ...rest } = d.attendance
+                  return { ...d, attendance: rest }
+                }),
+              }
+            : c,
+        ),
+      )
+      api.removeAttendanceSession(committeeId, session).catch((err) => {
+        console.log("[mun-hub] failed to remove attendance session", err)
+        toast.error("Failed to remove that session on the server.")
         setCommittees(previous)
       })
     },

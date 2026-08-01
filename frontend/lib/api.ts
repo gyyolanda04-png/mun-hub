@@ -48,10 +48,11 @@ export function deleteCommittee(id: string): Promise<void> {
 export function addDelegates(
   committeeId: string,
   delegates: Omit<Delegate, "id" | "speeches" | "amendments" | "pois">[],
+  attendanceSessions?: string[],
 ): Promise<Committee> {
   return request<Committee>(`/api/committees/${committeeId}/delegates`, {
     method: "POST",
-    body: JSON.stringify({ delegates }),
+    body: JSON.stringify({ delegates, attendanceSessions: attendanceSessions ?? [] }),
   })
 }
 
@@ -81,4 +82,30 @@ export function updateDebate(
     method: "PATCH",
     body: JSON.stringify(patch),
   })
+}
+
+export function setAttendance(
+  committeeId: string,
+  delegateId: string,
+  session: string,
+  present: boolean,
+): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/delegates/${delegateId}/attendance`, {
+    method: "PATCH",
+    body: JSON.stringify({ session, present }),
+  })
+}
+
+export function addAttendanceSession(committeeId: string, session: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/attendance-sessions`, {
+    method: "POST",
+    body: JSON.stringify({ session }),
+  })
+}
+
+export function removeAttendanceSession(committeeId: string, session: string): Promise<Committee> {
+  return request<Committee>(
+    `/api/committees/${committeeId}/attendance-sessions/${encodeURIComponent(session)}`,
+    { method: "DELETE" },
+  )
 }

@@ -9,7 +9,8 @@ public record CommitteeResponse(
     String topic,
     long createdAt,
     List<DelegateResponse> delegates,
-    DebateStateResponse debate) {
+    DebateStateResponse debate,
+    List<String> attendanceSessions) {
 
   public static CommitteeResponse from(Committee c) {
     return new CommitteeResponse(
@@ -18,6 +19,7 @@ public record CommitteeResponse(
         c.getTopic(),
         c.getCreatedAt(),
         c.getDelegates().stream().map(DelegateResponse::from).toList(),
-        DebateStateResponse.from(c.getDebate()));
+        DebateStateResponse.from(c.getDebate()),
+        c.getAttendanceSessions());
   }
 }

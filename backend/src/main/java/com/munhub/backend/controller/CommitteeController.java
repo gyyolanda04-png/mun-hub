@@ -1,9 +1,11 @@
 package com.munhub.backend.controller;
 
+import com.munhub.backend.dto.AddAttendanceSessionRequest;
 import com.munhub.backend.dto.AddDelegatesRequest;
 import com.munhub.backend.dto.CommitteeResponse;
 import com.munhub.backend.dto.CreateCommitteeRequest;
 import com.munhub.backend.dto.IncrementCounterRequest;
+import com.munhub.backend.dto.SetAttendanceRequest;
 import com.munhub.backend.model.Committee;
 import com.munhub.backend.service.CommitteeService;
 import jakarta.validation.Valid;
@@ -56,7 +58,8 @@ public class CommitteeController {
   @PostMapping("/{id}/delegates")
   public CommitteeResponse addDelegates(
       @PathVariable String id, @Valid @RequestBody AddDelegatesRequest request) {
-    Committee committee = committeeService.addDelegates(id, request.delegates());
+    Committee committee =
+        committeeService.addDelegates(id, request.delegates(), request.attendanceSessions());
     return CommitteeResponse.from(committee);
   }
 
@@ -79,6 +82,30 @@ public class CommitteeController {
   @PatchMapping("/{id}/debate")
   public CommitteeResponse updateDebate(@PathVariable String id, @RequestBody Map<String, Object> patch) {
     Committee committee = committeeService.updateDebate(id, patch);
+    return CommitteeResponse.from(committee);
+  }
+
+  @PatchMapping("/{id}/delegates/{delegateId}/attendance")
+  public CommitteeResponse setAttendance(
+      @PathVariable String id,
+      @PathVariable String delegateId,
+      @Valid @RequestBody SetAttendanceRequest request) {
+    Committee committee =
+        committeeService.setAttendance(id, delegateId, request.session(), request.present());
+    return CommitteeResponse.from(committee);
+  }
+
+  @PostMapping("/{id}/attendance-sessions")
+  public CommitteeResponse addAttendanceSession(
+      @PathVariable String id, @Valid @RequestBody AddAttendanceSessionRequest request) {
+    Committee committee = committeeService.addAttendanceSession(id, request.session());
+    return CommitteeResponse.from(committee);
+  }
+
+  @DeleteMapping("/{id}/attendance-sessions/{session}")
+  public CommitteeResponse removeAttendanceSession(
+      @PathVariable String id, @PathVariable String session) {
+    Committee committee = committeeService.removeAttendanceSession(id, session);
     return CommitteeResponse.from(committee);
   }
 }

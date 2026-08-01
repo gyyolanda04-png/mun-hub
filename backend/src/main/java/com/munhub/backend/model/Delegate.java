@@ -1,11 +1,17 @@
 package com.munhub.backend.model;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Mirrors the Delegate interface in the frontend's lib/types.ts.
@@ -33,6 +39,13 @@ public class Delegate {
   private int speeches = 0;
   private int amendments = 0;
   private int pois = 0;
+
+  /** Session name (e.g. "Day 1", "Day 2- Morning") -> was this delegate present. */
+  @ElementCollection
+  @CollectionTable(name = "delegate_attendance", joinColumns = @JoinColumn(name = "delegate_id"))
+  @MapKeyColumn(name = "session")
+  @Column(name = "present")
+  private Map<String, Boolean> attendance = new LinkedHashMap<>();
 
   @ManyToOne
   @JoinColumn(name = "committee_id", nullable = false)
@@ -100,6 +113,14 @@ public class Delegate {
 
   public void setPois(int pois) {
     this.pois = pois;
+  }
+
+  public Map<String, Boolean> getAttendance() {
+    return attendance;
+  }
+
+  public void setAttendance(Map<String, Boolean> attendance) {
+    this.attendance = attendance != null ? attendance : new LinkedHashMap<>();
   }
 
   public Committee getCommittee() {

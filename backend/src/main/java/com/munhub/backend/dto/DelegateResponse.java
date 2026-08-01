@@ -1,6 +1,7 @@
 package com.munhub.backend.dto;
 
 import com.munhub.backend.model.Delegate;
+import java.util.Map;
 
 public record DelegateResponse(
     String id,
@@ -10,7 +11,8 @@ public record DelegateResponse(
     String email,
     int speeches,
     int amendments,
-    int pois) {
+    int pois,
+    Map<String, Boolean> attendance) {
 
   public static DelegateResponse from(Delegate d) {
     return new DelegateResponse(
@@ -21,6 +23,7 @@ public record DelegateResponse(
         d.getEmail(),
         d.getSpeeches(),
         d.getAmendments(),
-        d.getPois());
+        d.getPois(),
+        d.getAttendance());
   }
 }

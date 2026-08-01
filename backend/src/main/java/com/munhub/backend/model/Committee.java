@@ -1,9 +1,13 @@
 package com.munhub.backend.model;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
@@ -28,6 +32,13 @@ public class Committee {
 
   @Embedded
   private DebateState debate = new DebateState();
+
+  /** Ordered attendance columns, e.g. ["Day 1", "Day 2- Morning", "Day 2- Lunch"]. */
+  @ElementCollection
+  @CollectionTable(name = "committee_attendance_sessions", joinColumns = @JoinColumn(name = "committee_id"))
+  @OrderColumn(name = "session_position")
+  @Column(name = "session")
+  private List<String> attendanceSessions = new ArrayList<>();
 
   public String getId() {
     return id;
@@ -75,5 +86,13 @@ public class Committee {
 
   public void setDebate(DebateState debate) {
     this.debate = debate != null ? debate : new DebateState();
+  }
+
+  public List<String> getAttendanceSessions() {
+    return attendanceSessions;
+  }
+
+  public void setAttendanceSessions(List<String> attendanceSessions) {
+    this.attendanceSessions = attendanceSessions != null ? attendanceSessions : new ArrayList<>();
   }
 }

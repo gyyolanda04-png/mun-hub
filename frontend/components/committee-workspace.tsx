@@ -1,11 +1,12 @@
 "use client"
 
-import { ArrowLeft, Monitor, Users, Timer, ListChecks } from "lucide-react"
+import { ArrowLeft, Monitor, CalendarCheck, Timer, ListChecks } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DelegateImport } from "@/components/delegate-import"
+import { AttendanceTracker } from "@/components/attendance-tracker"
 import { ParticipationTracker } from "@/components/participation-tracker"
 import { TimingCalculator } from "@/components/timing-calculator"
 
@@ -69,15 +70,15 @@ export function CommitteeWorkspace({
         </div>
       </div>
 
-      <Tabs defaultValue="participation" className="w-full">
+      <Tabs defaultValue="attendance" className="w-full">
         <TabsList>
+          <TabsTrigger value="attendance">
+            <CalendarCheck className="size-4" />
+            Attendance
+          </TabsTrigger>
           <TabsTrigger value="participation">
             <ListChecks className="size-4" />
             Participation
-          </TabsTrigger>
-          <TabsTrigger value="delegates">
-            <Users className="size-4" />
-            Delegates
           </TabsTrigger>
           <TabsTrigger value="timing">
             <Timer className="size-4" />
@@ -85,39 +86,40 @@ export function CommitteeWorkspace({
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="attendance" className="mt-6">
+          <div className="flex flex-col gap-4">
+            {committee.delegates.length === 0 ? (
+              <div className="rounded-lg border border-border bg-card p-5">
+                <h2 className="font-medium text-foreground">
+                  Import delegates to begin
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Upload a CSV or Excel file below. Any attendance columns
+                  (e.g. &quot;Day 1&quot;, &quot;Day 2- Morning&quot;) are
+                  picked up automatically.
+                </p>
+              </div>
+            ) : null}
+            <DelegateImport committeeId={committeeId} />
+            <AttendanceTracker committeeId={committeeId} />
+          </div>
+        </TabsContent>
+
         <TabsContent value="participation" className="mt-6">
           {committee.delegates.length === 0 ? (
-            <EmptyDelegates committeeId={committeeId} />
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Import delegates on the Attendance tab to start tracking
+              participation.
+            </p>
           ) : (
             <ParticipationTracker committeeId={committeeId} />
           )}
-        </TabsContent>
-
-        <TabsContent value="delegates" className="mt-6">
-          <div className="flex flex-col gap-4">
-            <DelegateImport committeeId={committeeId} />
-          </div>
         </TabsContent>
 
         <TabsContent value="timing" className="mt-6">
           <TimingCalculator committeeId={committeeId} />
         </TabsContent>
       </Tabs>
-    </div>
-  )
-}
-
-function EmptyDelegates({ committeeId }: { committeeId: string }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-card p-5">
-        <h2 className="font-medium text-foreground">Import delegates to begin</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload a CSV or Excel file below. Once delegates are imported,
-          you&apos;ll be able to track speeches, amendments, and POIs here.
-        </p>
-      </div>
-      <DelegateImport committeeId={committeeId} />
     </div>
   )
 }

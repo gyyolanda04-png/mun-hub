@@ -70,10 +70,13 @@ types.
 | POST | `/api/committees` | Create a committee — `{ "name": string, "topic": string }` |
 | GET | `/api/committees/{id}` | Get one committee |
 | DELETE | `/api/committees/{id}` | Delete a committee |
-| POST | `/api/committees/{id}/delegates` | Bulk-add delegates — `{ "delegates": [{ "delegation", "name", "school", "email" }] }`. `delegation` (the country/delegation represented) is required and must be unique within the committee — inputs whose delegation already exists (in the committee or earlier in the same batch, case-insensitive) are silently skipped rather than duplicated |
+| POST | `/api/committees/{id}/delegates` | Bulk-add delegates — `{ "delegates": [{ "delegation", "name", "school", "email", "attendance" }], "attendanceSessions": [...] }`. `delegation` (the country/delegation represented) is required and must be unique within the committee — inputs whose delegation already exists (in the committee or earlier in the same batch, case-insensitive) are silently skipped rather than duplicated. `attendanceSessions` is merged into the committee's session list (new names appended, duplicates ignored) |
 | DELETE | `/api/committees/{id}/delegates/{delegateId}` | Remove a delegate (also clears them from the debate's current speaker / queue) |
 | PATCH | `/api/committees/{id}/delegates/{delegateId}/counter` | Increment a counter — `{ "field": "speeches" \| "amendments" \| "pois", "delta": number }` |
 | PATCH | `/api/committees/{id}/debate` | Partially update debate state — send only the fields you want to change, e.g. `{ "stage": "general" }` or `{ "currentSpeakerId": null }` |
+| PATCH | `/api/committees/{id}/delegates/{delegateId}/attendance` | Set one delegate's attendance for one session — `{ "session": "Day 1", "present": true }`. 404s if `session` isn't one of the committee's `attendanceSessions` |
+| POST | `/api/committees/{id}/attendance-sessions` | Add a new attendance column — `{ "session": "Day 1" }`. No-op if it already exists |
+| DELETE | `/api/committees/{id}/attendance-sessions/{session}` | Remove an attendance column (URL-encode `session`) and clear it from every delegate |
 
 ### Example
 
@@ -92,7 +95,17 @@ curl -X POST http://localhost:8080/api/committees \
   "topic": "Nuclear Non-Proliferation",
   "createdAt": 1234567890,
   "delegates": [
-    { "id": "uuid", "delegation": "Bangladesh", "name": "Alice", "school": "Columbia", "email": "alice@x.com", "speeches": 0, "amendments": 0, "pois": 0 }
+    {
+      "id": "uuid",
+      "delegation": "Bangladesh",
+      "name": "Alice",
+      "school": "Columbia",
+      "email": "alice@x.com",
+      "speeches": 0,
+      "amendments": 0,
+      "pois": 0,
+      "attendance": { "Day 1": true, "Day 2- Morning": false }
+    }
   ],
   "debate": {
     "totalDuration": 180,
@@ -105,7 +118,8 @@ curl -X POST http://localhost:8080/api/committees \
     "currentAmendment": 1,
     "currentSpeakerId": null,
     "speakerQueue": []
-  }
+  },
+  "attendanceSessions": ["Day 1", "Day 2- Morning"]
 }
 ```
 

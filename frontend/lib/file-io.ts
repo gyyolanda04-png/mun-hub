@@ -6,12 +6,24 @@ export interface ParsedDelegate {
   name: string
   school: string
   email: string
+  attendance: Record<string, boolean>
+}
+
+export interface ParsedDelegateFile {
+  delegates: ParsedDelegate[]
+  /** Attendance columns found in the sheet, e.g. ["Day 1", "Day 2- Morning"]. */
+  attendanceSessions: string[]
 }
 
 const DELEGATION_KEYS = ["delegation", "country", "nation", "assigned country", "represented country"]
 const NAME_KEYS = ["name", "delegate", "delegate name", "fullname", "full name"]
 const SCHOOL_KEYS = ["school", "institution", "organisation", "organization"]
 const EMAIL_KEYS = ["email", "e-mail", "mail", "email address"]
+const KNOWN_KEYS = [...DELEGATION_KEYS, ...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
+
+// Matches column headers like "Day 1", "Day 2- Morning", "Session 3", "Afternoon".
+const ATTENDANCE_HEADER_PATTERN = /\bday\s*\d|\bsession\s*\d|morning|afternoon|evening|\blunch\b/i
+const PRESENT_VALUES = new Set(["true", "1", "y", "yes", "x", "present"])
 
 function pick(row: Record<string, unknown>, keys: string[]): string {
   const entries = Object.entries(row)
@@ -31,8 +43,6 @@ function pick(row: Record<string, unknown>, keys: string[]): string {
   return ""
 }
 
-const HEADER_KEYS = [...DELEGATION_KEYS, ...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
-
 /**
  * Find the row that actually contains the column headers. Some exports
  * (e.g. committee attendance sheets) have a title row above the real
@@ -42,10 +52,23 @@ function findHeaderRowIndex(rows: unknown[][]): number {
   const index = rows.findIndex((row) =>
     row.some((cell) => {
       const text = String(cell ?? "").trim().toLowerCase()
-      return text !== "" && HEADER_KEYS.some((key) => text === key || text.includes(key))
+      return text !== "" && KNOWN_KEYS.some((key) => text === key || text.includes(key))
     }),
   )
   return index === -1 ? 0 : index
+}
+
+function isKnownHeader(header: string): boolean {
+  const text = header.trim().toLowerCase()
+  return text !== "" && KNOWN_KEYS.some((key) => text === key || text.includes(key))
+}
+
+function isAttendanceHeader(header: string): boolean {
+  return header.trim() !== "" && !isKnownHeader(header) && ATTENDANCE_HEADER_PATTERN.test(header)
+}
+
+function parsePresent(value: unknown): boolean {
+  return PRESENT_VALUES.has(String(value ?? "").trim().toLowerCase())
 }
 
 /**
@@ -53,21 +76,22 @@ function findHeaderRowIndex(rows: unknown[][]): number {
  * Reads the first worksheet, locates the header row (skipping any title
  * rows above it), and maps common header names.
  */
-export async function parseDelegateFile(file: File): Promise<ParsedDelegate[]> {
+export async function parseDelegateFile(file: File): Promise<ParsedDelegateFile> {
   const buffer = await file.arrayBuffer()
   const workbook = read(buffer, { type: "array" })
   const sheetName = workbook.SheetNames[0]
-  if (!sheetName) return []
+  if (!sheetName) return { delegates: [], attendanceSessions: [] }
   const sheet = workbook.Sheets[sheetName]
   const rawRows = utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: "",
   })
-  if (rawRows.length === 0) return []
+  if (rawRows.length === 0) return { delegates: [], attendanceSessions: [] }
 
   const headerRowIndex = findHeaderRowIndex(rawRows)
   const headers = rawRows[headerRowIndex].map((cell) => String(cell ?? "").trim())
   const dataRows = rawRows.slice(headerRowIndex + 1)
+  const attendanceSessions = [...new Set(headers.filter(isAttendanceHeader))]
 
   const parsed: ParsedDelegate[] = []
   for (const dataRow of dataRows) {
@@ -89,9 +113,14 @@ export async function parseDelegateFile(file: File): Promise<ParsedDelegate[]> {
     const school = pick(row, SCHOOL_KEYS)
     const email = pick(row, EMAIL_KEYS).replace(/^mailto:/i, "").trim()
     if (!delegation && !name && !school && !email) continue
-    parsed.push({ delegation, name: name || "Unnamed Delegate", school, email })
+
+    const attendance: Record<string, boolean> = {}
+    for (const session of attendanceSessions) {
+      attendance[session] = parsePresent(row[session])
+    }
+    parsed.push({ delegation, name: name || "Unnamed Delegate", school, email, attendance })
   }
-  return parsed
+  return { delegates: parsed, attendanceSessions }
 }
 
 type ExportFormat = "csv" | "xlsx"

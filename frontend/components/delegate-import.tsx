@@ -24,14 +24,18 @@ export function DelegateImport({ committeeId }: { committeeId: string }) {
     }
     setBusy(true)
     try {
-      const parsed = await parseDelegateFile(file)
-      if (parsed.length === 0) {
+      const { delegates, attendanceSessions } = await parseDelegateFile(file)
+      if (delegates.length === 0) {
         toast.error("No delegates found. Check that the file has data rows.")
         return
       }
-      addDelegates(committeeId, parsed)
+      addDelegates(committeeId, delegates, attendanceSessions)
+      const sessionNote =
+        attendanceSessions.length > 0
+          ? ` with ${attendanceSessions.length} attendance session${attendanceSessions.length === 1 ? "" : "s"}`
+          : ""
       toast.success(
-        `Imported ${parsed.length} delegate${parsed.length === 1 ? "" : "s"}.`,
+        `Imported ${delegates.length} delegate${delegates.length === 1 ? "" : "s"}${sessionNote}.`,
       )
     } catch (err) {
       console.log("[v0] import error", err)
@@ -71,7 +75,8 @@ export function DelegateImport({ committeeId }: { committeeId: string }) {
           Drag &amp; drop a CSV or Excel file
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          We&apos;ll read delegate names, schools, and emails automatically.
+          We&apos;ll read delegate info and any attendance columns (e.g.
+          &quot;Day 1&quot;, &quot;Day 2- Morning&quot;) automatically.
         </p>
       </div>
       <Button
@@ -90,7 +95,7 @@ export function DelegateImport({ committeeId }: { committeeId: string }) {
         onChange={(e) => void handleFiles(e.target.files)}
       />
       <p className="text-xs text-muted-foreground/80">
-        Recognised columns: delegation (country) / name / school / email
+        Recognised columns: delegation (country) / name / school / email / attendance (e.g. Day 1)
       </p>
     </div>
   )

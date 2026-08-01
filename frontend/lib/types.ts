@@ -8,6 +8,8 @@ export interface Delegate {
   speeches: number
   amendments: number
   pois: number
+  /** Session name (e.g. "Day 1", "Day 2- Morning") -> was this delegate present. */
+  attendance: Record<string, boolean>
 }
 
 export interface DebateState {
@@ -40,6 +42,8 @@ export interface Committee {
   createdAt: number
   delegates: Delegate[]
   debate: DebateState
+  /** Ordered attendance columns, e.g. ["Day 1", "Day 2- Morning", "Day 2- Lunch"]. */
+  attendanceSessions: string[]
 }
 
 export const STAGE_LABELS: Record<DebateStage, string> = {
