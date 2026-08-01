@@ -11,11 +11,24 @@ A Spring Boot REST API for the MUN Hub committee management frontend
 - Spring Web, Spring Data JPA, Bean Validation
 - H2 (file-based) for local dev, PostgreSQL for production
 
+## Prerequisites
+
+You only need a **Java 21+ JDK** installed. Maven itself is not required —
+this project includes the Maven Wrapper (`mvnw` / `mvnw.cmd`), which
+downloads the right Maven version automatically on first run.
+
 ## Running locally
 
 ```bash
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run
+```
+
+On Windows (Command Prompt or PowerShell), use `mvnw.cmd` instead:
+
+```bash
+cd backend
+mvnw.cmd spring-boot:run
 ```
 
 The API starts on `http://localhost:8080`. Data is persisted to a local H2
@@ -38,7 +51,7 @@ Set `SPRING_PROFILES_ACTIVE=prod` plus:
 
 ```bash
 SPRING_PROFILES_ACTIVE=prod DB_URL=... DB_USERNAME=... DB_PASSWORD=... \
-  mvn spring-boot:run
+  ./mvnw spring-boot:run
 ```
 
 Schema is auto-created/updated via Hibernate (`ddl-auto: update`). For a
@@ -98,9 +111,7 @@ curl -X POST http://localhost:8080/api/committees \
 
 ## Connecting the frontend
 
-The frontend currently manages all state client-side via `lib/store.tsx`
-(`localStorage`). To wire it up to this API, replace that store's
-implementation with `fetch` calls against `NEXT_PUBLIC_API_URL` (defaulting
-to `http://localhost:8080`), keeping the same `StoreValue` interface so the
-rest of the app doesn't need to change. That swap wasn't made yet — this
-backend is ready to be adopted whenever you want to make that change.
+`frontend/lib/store.tsx` already talks to this API via `frontend/lib/api.ts`,
+using `NEXT_PUBLIC_API_URL` (defaulting to `http://localhost:8080`, see
+`frontend/.env.local.example`). Just run this backend and the frontend dev
+server side by side.
