@@ -66,11 +66,11 @@ public class CommitteeService {
     // skip duplicates within the incoming batch itself.
     Set<String> takenDelegations =
         committee.getDelegates().stream()
-            .map(d -> d.getDelegation().trim().toLowerCase())
+            .map(d -> normalizeDelegation(d.getDelegation()))
             .collect(Collectors.toCollection(HashSet::new));
 
     for (DelegateInput input : inputs) {
-      String delegationKey = input.delegation().trim().toLowerCase();
+      String delegationKey = normalizeDelegation(input.delegation());
       if (!takenDelegations.add(delegationKey)) {
         continue;
       }
@@ -186,5 +186,10 @@ public class CommitteeService {
 
   private NotFoundException notFound(String id) {
     return new NotFoundException("Committee not found: " + id);
+  }
+
+  /** Null-safe: delegates persisted before the delegation field existed may have none. */
+  private String normalizeDelegation(String delegation) {
+    return delegation == null ? "" : delegation.trim().toLowerCase();
   }
 }

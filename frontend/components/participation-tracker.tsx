@@ -76,13 +76,13 @@ export function ParticipationTracker({
         d.amendments >= minAmendments &&
         d.pois >= minPois &&
         (search.trim() === "" ||
-          d.delegation.toLowerCase().includes(search.trim().toLowerCase()) ||
+          (d.delegation ?? "").toLowerCase().includes(search.trim().toLowerCase()) ||
           d.name.toLowerCase().includes(search.trim().toLowerCase()) ||
           d.school.toLowerCase().includes(search.trim().toLowerCase())),
     )
     const sorted = [...filtered].sort((a, b) => {
       let cmp = 0
-      if (sortKey === "delegation") cmp = a.delegation.localeCompare(b.delegation)
+      if (sortKey === "delegation") cmp = (a.delegation ?? "").localeCompare(b.delegation ?? "")
       else if (sortKey === "name") cmp = a.name.localeCompare(b.name)
       else cmp = a[sortKey] - b[sortKey]
       return sortDir === "asc" ? cmp : -cmp

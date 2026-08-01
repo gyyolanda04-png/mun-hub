@@ -15,7 +15,7 @@ public record DelegateResponse(
   public static DelegateResponse from(Delegate d) {
     return new DelegateResponse(
         d.getId(),
-        d.getDelegation(),
+        d.getDelegation() == null ? "" : d.getDelegation(),
         d.getName(),
         d.getSchool(),
         d.getEmail(),
