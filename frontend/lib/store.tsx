@@ -8,19 +8,18 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { toast } from "sonner"
 import {
   type Committee,
   type Delegate,
   type DebateState,
-  createDefaultDebate,
 } from "@/lib/types"
-
-const STORAGE_KEY = "mun-hub:committees:v1"
+import * as api from "@/lib/api"
 
 interface StoreValue {
   committees: Committee[]
   ready: boolean
-  createCommittee: (name: string, topic: string) => Committee
+  createCommittee: (name: string, topic: string) => Promise<Committee>
   deleteCommittee: (id: string) => void
   getCommittee: (id: string) => Committee | undefined
   addDelegates: (
@@ -39,80 +38,68 @@ interface StoreValue {
 
 const StoreContext = createContext<StoreValue | null>(null)
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [committees, setCommittees] = useState<Committee[]>([])
   const [ready, setReady] = useState(false)
-  const loaded = useRef(false)
+  // Mirrors `committees` synchronously so rollbacks always restore the
+  // state from right before an optimistic update, even across renders.
+  const committeesRef = useRef<Committee[]>([])
+  committeesRef.current = committees
 
-  // Load once on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Committee[]
-        setCommittees(Array.isArray(parsed) ? parsed : [])
-      }
-    } catch (err) {
-      console.log("[v0] failed to load committees", err)
-    } finally {
-      loaded.current = true
-      setReady(true)
+    let cancelled = false
+    api
+      .listCommittees()
+      .then((data) => {
+        if (!cancelled) setCommittees(data)
+      })
+      .catch((err) => {
+        console.log("[mun-hub] failed to load committees", err)
+        toast.error("Couldn't reach the server. Is the backend running?")
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true)
+      })
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  // Persist on change (after initial load)
-  useEffect(() => {
-    if (!loaded.current) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(committees))
-    } catch (err) {
-      console.log("[v0] failed to persist committees", err)
-    }
-  }, [committees])
+  function replaceCommittee(updated: Committee) {
+    setCommittees((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+  }
 
   const value: StoreValue = {
     committees,
     ready,
-    createCommittee(name, topic) {
-      const committee: Committee = {
-        id: uid(),
-        name: name.trim(),
-        topic: topic.trim(),
-        createdAt: Date.now(),
-        delegates: [],
-        debate: createDefaultDebate(),
-      }
+    async createCommittee(name, topic) {
+      const committee = await api.createCommittee(name.trim(), topic.trim())
       setCommittees((prev) => [committee, ...prev])
       return committee
     },
     deleteCommittee(id) {
+      const previous = committeesRef.current
       setCommittees((prev) => prev.filter((c) => c.id !== id))
+      api.deleteCommittee(id).catch((err) => {
+        console.log("[mun-hub] failed to delete committee", err)
+        toast.error("Failed to delete the committee on the server.")
+        setCommittees(previous)
+      })
     },
     getCommittee(id) {
       return committees.find((c) => c.id === id)
     },
     addDelegates(committeeId, delegates) {
-      setCommittees((prev) =>
-        prev.map((c) => {
-          if (c.id !== committeeId) return c
-          const additions: Delegate[] = delegates.map((d) => ({
-            id: uid(),
-            name: d.name,
-            school: d.school,
-            email: d.email,
-            speeches: 0,
-            amendments: 0,
-            pois: 0,
-          }))
-          return { ...c, delegates: [...c.delegates, ...additions] }
-        }),
-      )
+      api
+        .addDelegates(committeeId, delegates)
+        .then(replaceCommittee)
+        .catch((err) => {
+          console.log("[mun-hub] failed to add delegates", err)
+          toast.error("Failed to add delegate(s) on the server.")
+        })
     },
     removeDelegate(committeeId, delegateId) {
+      const previous = committeesRef.current
       setCommittees((prev) =>
         prev.map((c) =>
           c.id === committeeId
@@ -133,8 +120,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : c,
         ),
       )
+      api.removeDelegate(committeeId, delegateId).catch((err) => {
+        console.log("[mun-hub] failed to remove delegate", err)
+        toast.error("Failed to remove the delegate on the server.")
+        setCommittees(previous)
+      })
     },
     incrementCounter(committeeId, delegateId, field, delta) {
+      const previous = committeesRef.current
       setCommittees((prev) =>
         prev.map((c) =>
           c.id === committeeId
@@ -149,8 +142,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : c,
         ),
       )
+      api.incrementCounter(committeeId, delegateId, field, delta).catch((err) => {
+        console.log("[mun-hub] failed to update counter", err)
+        toast.error("Failed to sync that update with the server.")
+        setCommittees(previous)
+      })
     },
     updateDebate(committeeId, patch) {
+      const previous = committeesRef.current
       setCommittees((prev) =>
         prev.map((c) =>
           c.id === committeeId
@@ -158,6 +157,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : c,
         ),
       )
+      api.updateDebate(committeeId, patch).catch((err) => {
+        console.log("[mun-hub] failed to update debate state", err)
+        toast.error("Failed to sync debate state with the server.")
+        setCommittees(previous)
+      })
     },
   }
 

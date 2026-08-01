@@ -23,17 +23,22 @@ export function CommitteeList({ onOpen }: { onOpen: (id: string) => void }) {
   const [name, setName] = useState("")
   const [topic, setTopic] = useState("")
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!name.trim()) {
       toast.error("Please enter a committee name.")
       return
     }
-    const committee = createCommittee(name, topic)
-    setName("")
-    setTopic("")
-    setOpen(false)
-    toast.success(`Committee "${committee.name}" created.`)
-    onOpen(committee.id)
+    try {
+      const committee = await createCommittee(name, topic)
+      setName("")
+      setTopic("")
+      setOpen(false)
+      toast.success(`Committee "${committee.name}" created.`)
+      onOpen(committee.id)
+    } catch (err) {
+      console.log("[mun-hub] failed to create committee", err)
+      toast.error("Failed to create the committee on the server.")
+    }
   }
 
   return (
