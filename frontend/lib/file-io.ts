@@ -29,9 +29,27 @@ function pick(row: Record<string, unknown>, keys: string[]): string {
   return ""
 }
 
+const HEADER_KEYS = [...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
+
+/**
+ * Find the row that actually contains the column headers. Some exports
+ * (e.g. committee attendance sheets) have a title row above the real
+ * header row, so we can't just assume row 0 is the header.
+ */
+function findHeaderRowIndex(rows: unknown[][]): number {
+  const index = rows.findIndex((row) =>
+    row.some((cell) => {
+      const text = String(cell ?? "").trim().toLowerCase()
+      return text !== "" && HEADER_KEYS.some((key) => text === key || text.includes(key))
+    }),
+  )
+  return index === -1 ? 0 : index
+}
+
 /**
  * Parse a CSV or Excel file into delegate rows.
- * Reads the first worksheet and maps common header names.
+ * Reads the first worksheet, locates the header row (skipping any title
+ * rows above it), and maps common header names.
  */
 export async function parseDelegateFile(file: File): Promise<ParsedDelegate[]> {
   const buffer = await file.arrayBuffer()
@@ -39,15 +57,26 @@ export async function parseDelegateFile(file: File): Promise<ParsedDelegate[]> {
   const sheetName = workbook.SheetNames[0]
   if (!sheetName) return []
   const sheet = workbook.Sheets[sheetName]
-  const rows = utils.sheet_to_json<Record<string, unknown>>(sheet, {
+  const rawRows = utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
     defval: "",
   })
+  if (rawRows.length === 0) return []
+
+  const headerRowIndex = findHeaderRowIndex(rawRows)
+  const headers = rawRows[headerRowIndex].map((cell) => String(cell ?? "").trim())
+  const dataRows = rawRows.slice(headerRowIndex + 1)
 
   const parsed: ParsedDelegate[] = []
-  for (const row of rows) {
+  for (const dataRow of dataRows) {
+    const row: Record<string, unknown> = {}
+    headers.forEach((header, i) => {
+      if (header) row[header] = dataRow[i] ?? ""
+    })
+
     const name = pick(row, NAME_KEYS)
     const school = pick(row, SCHOOL_KEYS)
-    const email = pick(row, EMAIL_KEYS)
+    const email = pick(row, EMAIL_KEYS).replace(/^mailto:/i, "").trim()
     if (!name && !school && !email) continue
     parsed.push({ name: name || "Unnamed Delegate", school, email })
   }
