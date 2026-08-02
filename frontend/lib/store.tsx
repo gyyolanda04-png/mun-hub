@@ -45,6 +45,12 @@ interface StoreValue {
   ) => void
   addAttendanceSession: (committeeId: string, session: string) => void
   removeAttendanceSession: (committeeId: string, session: string) => void
+  addMember: (committeeId: string, username: string) => Promise<Committee>
+  removeMember: (committeeId: string, username: string) => Promise<Committee>
+  /** Applies a live update pushed over the WebSocket from another chair's action. */
+  applyRemoteUpdate: (committee: Committee) => void
+  /** Removes a committee that was deleted by another chair, live. */
+  applyRemoteDelete: (committeeId: string) => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -227,6 +233,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast.error("Failed to remove that session on the server.")
         setCommittees(previous)
       })
+    },
+    async addMember(committeeId, username) {
+      const committee = await api.addMember(committeeId, username)
+      replaceCommittee(committee)
+      return committee
+    },
+    async removeMember(committeeId, username) {
+      const committee = await api.removeMember(committeeId, username)
+      replaceCommittee(committee)
+      return committee
+    },
+    applyRemoteUpdate(committee) {
+      replaceCommittee(committee)
+    },
+    applyRemoteDelete(committeeId) {
+      setCommittees((prev) => prev.filter((c) => c.id !== committeeId))
     },
   }
 

@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
 import { Geist, Source_Serif_4 } from "next/font/google"
-import { StoreProvider } from "@/lib/store"
+import { AuthProvider } from "@/lib/auth"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
@@ -38,7 +38,7 @@ export default function RootLayout({
       className={`light bg-background ${geistSans.variable} ${sourceSerif.variable}`}
     >
       <body className="antialiased font-sans">
-        <StoreProvider>{children}</StoreProvider>
+        <AuthProvider>{children}</AuthProvider>
         <Toaster position="top-center" richColors />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

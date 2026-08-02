@@ -44,6 +44,8 @@ export interface Committee {
   debate: DebateState
   /** Ordered attendance columns, e.g. ["Day 1", "Day 2- Morning", "Day 2- Lunch"]. */
   attendanceSessions: string[]
+  /** Usernames of the chairs who can see and edit this committee. */
+  members: string[]
 }
 
 export const STAGE_LABELS: Record<DebateStage, string> = {

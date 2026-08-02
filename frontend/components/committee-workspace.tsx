@@ -1,10 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Monitor, CalendarCheck, Timer, ListChecks, UploadCloud } from "lucide-react"
+import {
+  ArrowLeft,
+  Monitor,
+  CalendarCheck,
+  Timer,
+  ListChecks,
+  UploadCloud,
+  Users,
+  UserPlus,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
+import { useAuth } from "@/lib/auth"
 import { useStore } from "@/lib/store"
+import { ApiError } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -63,18 +77,25 @@ export function CommitteeWorkspace({
             {committee.topic ? (
               <p className="text-sm text-muted-foreground">{committee.topic}</p>
             ) : null}
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-2">
               <Badge variant="secondary">
                 {committee.delegates.length} delegate
                 {committee.delegates.length === 1 ? "" : "s"}
               </Badge>
+              <Badge variant="secondary">
+                {committee.members.length} chair
+                {committee.members.length === 1 ? "" : "s"}
+              </Badge>
             </div>
           </div>
 
-          <Button onClick={onPresent}>
-            <Monitor className="size-4" />
-            Presentation Mode
-          </Button>
+          <div className="flex items-center gap-2">
+            <ManageChairsDialog committeeId={committeeId} members={committee.members} />
+            <Button onClick={onPresent}>
+              <Monitor className="size-4" />
+              Presentation Mode
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -135,6 +156,109 @@ export function CommitteeWorkspace({
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function ManageChairsDialog({
+  committeeId,
+  members,
+}: {
+  committeeId: string
+  members: string[]
+}) {
+  const { addMember, removeMember } = useStore()
+  const { username: currentUsername } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [usernameInput, setUsernameInput] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  async function handleAdd() {
+    const trimmed = usernameInput.trim()
+    if (!trimmed) {
+      toast.error("Enter a username.")
+      return
+    }
+    setBusy(true)
+    try {
+      await addMember(committeeId, trimmed)
+      toast.success(`Added ${trimmed} as a chair.`)
+      setUsernameInput("")
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to add that chair.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRemove(username: string) {
+    setBusy(true)
+    try {
+      await removeMember(committeeId, username)
+      toast.success(`Removed ${username}.`)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to remove that chair.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button variant="outline">
+            <Users className="size-4" />
+            Manage chairs
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Chairs on this committee</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            {members.map((username) => (
+              <div
+                key={username}
+                className="flex items-center justify-between rounded-md border border-border bg-secondary/40 px-3 py-2"
+              >
+                <span className="text-sm text-foreground">
+                  {username}
+                  {username === currentUsername ? (
+                    <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
+                  ) : null}
+                </span>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Remove ${username}`}
+                  disabled={busy || members.length <= 1}
+                  onClick={() => void handleRemove(username)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Username to add"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleAdd()
+              }}
+              disabled={busy}
+            />
+            <Button onClick={() => void handleAdd()} disabled={busy}>
+              <UserPlus className="size-4" />
+              Add
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

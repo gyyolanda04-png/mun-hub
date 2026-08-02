@@ -8,11 +8,15 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Mirrors the Committee interface in the frontend's lib/types.ts. */
 @Entity
@@ -39,6 +43,14 @@ public class Committee {
   @OrderColumn(name = "session_position")
   @Column(name = "session")
   private List<String> attendanceSessions = new ArrayList<>();
+
+  /** Chairs who can see and edit this committee. Insertion order = creator first. */
+  @ManyToMany
+  @JoinTable(
+      name = "committee_members",
+      joinColumns = @JoinColumn(name = "committee_id"),
+      inverseJoinColumns = @JoinColumn(name = "user_id"))
+  private Set<User> members = new LinkedHashSet<>();
 
   public String getId() {
     return id;
@@ -94,5 +106,13 @@ public class Committee {
 
   public void setAttendanceSessions(List<String> attendanceSessions) {
     this.attendanceSessions = attendanceSessions != null ? attendanceSessions : new ArrayList<>();
+  }
+
+  public Set<User> getMembers() {
+    return members;
+  }
+
+  public void setMembers(Set<User> members) {
+    this.members = members != null ? members : new LinkedHashSet<>();
   }
 }

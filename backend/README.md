@@ -8,7 +8,7 @@ A Spring Boot REST API for the MUN Hub committee management frontend
 ## Stack
 
 - Java 21, Spring Boot 3.3
-- Spring Web, Spring Data JPA, Bean Validation
+- Spring Web, Spring Data JPA, Bean Validation, Spring Security, Spring WebSocket (STOMP)
 - H2 (file-based) for local dev, PostgreSQL for production
 
 ## Prerequisites
@@ -58,15 +58,80 @@ Schema is auto-created/updated via Hibernate (`ddl-auto: update`). For a
 real production deployment you'd typically swap this for a migration tool
 like Flyway, but that's out of scope for now.
 
-## API
+## Accounts & authentication
 
-All endpoints are under `/api/committees` and return/accept JSON shaped
-exactly like the frontend's `Committee`, `Delegate`, and `DebateState`
-types.
+Chairs create a simple username + password account. There's no email
+verification or password reset — this is built for a small trusted group
+running a conference together, not a public-facing product.
+
+Auth is a plain opaque bearer token (not JWT): `POST /api/auth/register` or
+`/api/auth/login` returns `{ "token": "...", "username": "..." }`; send that
+token as `Authorization: Bearer <token>` on every subsequent request
+(including the WebSocket connection — see below). Tokens don't expire on
+their own; `POST /api/auth/logout` is what invalidates one. Passwords are
+hashed with bcrypt.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/committees` | List all committees, newest first |
+| POST | `/api/auth/register` | Create an account — `{ "username": string, "password": string }` (username 2-32 chars, password 4-100 chars). 409 if the username's taken |
+| POST | `/api/auth/login` | `{ "username": string, "password": string }` → 401 on bad credentials |
+| POST | `/api/auth/logout` | Invalidates the bearer token sent in the `Authorization` header |
+| GET | `/api/auth/me` | Returns `{ "username": string }` for the current token — use this to validate a stored token on app load |
+
+## Committee membership
+
+A committee is only visible to and editable by the chairs on it (its
+`members`). Creating a committee automatically adds you as its first
+member. There's no "owner" role beyond that — any current member can add or
+remove any other member (including themselves), except the last remaining
+member can't be removed (a committee always needs at least one chair with
+access).
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/committees/{id}/members` | Add another registered user as a chair — `{ "username": string }`. 404 if that username doesn't exist |
+| DELETE | `/api/committees/{id}/members/{username}` | Remove a chair. 400 if they're the last remaining member |
+
+## Real-time updates (WebSocket / STOMP)
+
+Every write to a committee (delegates, counters, debate state, attendance,
+membership) is broadcast live to `/topic/committees/{committeeId}`, so two
+chairs with the same committee open both see changes instantly — no
+polling, no manual refresh. This is what lets one chair run Presentation
+Mode while another tracks stats on a different device/account, in sync.
+
+Connect a STOMP client to `ws://localhost:8080/ws` (native WebSocket, no
+SockJS). Auth happens differently here than for REST: browsers can't set
+custom HTTP headers on a WebSocket handshake, so instead send
+`Authorization: Bearer <token>` as a **STOMP header on the CONNECT
+frame** (e.g. `@stomp/stompjs`'s `connectHeaders` option) — the connection
+is authenticated *after* the socket opens, not during the HTTP upgrade.
+Subscribing to a committee's topic checks membership the same way the REST
+endpoints do; subscribing to a committee you're not on is rejected.
+
+Broadcast payload shape:
+
+```json
+{ "type": "updated", "committee": { /* full CommitteeResponse */ }, "committeeId": "uuid" }
+```
+
+or, when a committee is deleted:
+
+```json
+{ "type": "deleted", "committee": null, "committeeId": "uuid" }
+```
+
+## API
+
+All endpoints below are under `/api/committees`, require the
+`Authorization: Bearer <token>` header, and return/accept JSON shaped
+exactly like the frontend's `Committee`, `Delegate`, and `DebateState`
+types. Accessing or modifying a committee you're not a member of returns
+404 (not 403), so membership existence isn't leaked to non-members.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/committees` | List committees you're a member of, newest first |
 | POST | `/api/committees` | Create a committee — `{ "name": string, "topic": string }` |
 | GET | `/api/committees/{id}` | Get one committee |
 | DELETE | `/api/committees/{id}` | Delete a committee |
@@ -119,7 +184,8 @@ curl -X POST http://localhost:8080/api/committees \
     "currentSpeakerId": null,
     "speakerQueue": []
   },
-  "attendanceSessions": ["Day 1", "Day 2- Morning"]
+  "attendanceSessions": ["Day 1", "Day 2- Morning"],
+  "members": ["alice", "bob"]
 }
 ```
 

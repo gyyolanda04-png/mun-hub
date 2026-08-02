@@ -22,6 +22,16 @@ public class ApiExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
   }
 
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(body(HttpStatus.CONFLICT, ex.getMessage()));
+  }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(HttpStatus.UNAUTHORIZED, ex.getMessage()));
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
     String message =
