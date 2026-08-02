@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-export function DelegateImport({ committeeId }: { committeeId: string }) {
+export function DelegateImport({
+  committeeId,
+  onImported,
+}: {
+  committeeId: string
+  /** Called after a file is successfully parsed and sent to be added. */
+  onImported?: () => void
+}) {
   const { addDelegates } = useStore()
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,6 +44,7 @@ export function DelegateImport({ committeeId }: { committeeId: string }) {
       toast.success(
         `Imported ${delegates.length} delegate${delegates.length === 1 ? "" : "s"}${sessionNote}.`,
       )
+      onImported?.()
     } catch (err) {
       console.log("[v0] import error", err)
       toast.error("Could not read that file. Please try another export.")

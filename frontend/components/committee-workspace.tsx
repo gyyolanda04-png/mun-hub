@@ -1,10 +1,18 @@
 "use client"
 
-import { ArrowLeft, Monitor, CalendarCheck, Timer, ListChecks } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeft, Monitor, CalendarCheck, Timer, ListChecks, UploadCloud } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { DelegateImport } from "@/components/delegate-import"
 import { AttendanceTracker } from "@/components/attendance-tracker"
 import { ParticipationTracker } from "@/components/participation-tracker"
@@ -89,18 +97,24 @@ export function CommitteeWorkspace({
         <TabsContent value="attendance" className="mt-6">
           <div className="flex flex-col gap-4">
             {committee.delegates.length === 0 ? (
-              <div className="rounded-lg border border-border bg-card p-5">
-                <h2 className="font-medium text-foreground">
-                  Import delegates to begin
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Upload a CSV or Excel file below. Any attendance columns
-                  (e.g. &quot;Day 1&quot;, &quot;Day 2- Morning&quot;) are
-                  picked up automatically.
-                </p>
+              <>
+                <div className="rounded-lg border border-border bg-card p-5">
+                  <h2 className="font-medium text-foreground">
+                    Import delegates to begin
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Upload a CSV or Excel file below. Any attendance columns
+                    (e.g. &quot;Day 1&quot;, &quot;Day 2- Morning&quot;) are
+                    picked up automatically.
+                  </p>
+                </div>
+                <DelegateImport committeeId={committeeId} />
+              </>
+            ) : (
+              <div className="flex justify-end">
+                <ImportDelegatesDialog committeeId={committeeId} />
               </div>
-            ) : null}
-            <DelegateImport committeeId={committeeId} />
+            )}
             <AttendanceTracker committeeId={committeeId} />
           </div>
         </TabsContent>
@@ -121,5 +135,28 @@ export function CommitteeWorkspace({
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function ImportDelegatesDialog({ committeeId }: { committeeId: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button variant="outline">
+            <UploadCloud className="size-4" />
+            Upload another file
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Import delegates</DialogTitle>
+        </DialogHeader>
+        <DelegateImport committeeId={committeeId} onImported={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
   )
 }
