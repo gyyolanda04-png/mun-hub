@@ -8,6 +8,7 @@ import com.munhub.backend.model.DebateStage;
 import com.munhub.backend.model.DebateState;
 import com.munhub.backend.model.Delegate;
 import com.munhub.backend.repository.CommitteeRepository;
+import com.munhub.backend.repository.DelegateRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommitteeService {
 
   private final CommitteeRepository committeeRepository;
+  private final DelegateRepository delegateRepository;
 
-  public CommitteeService(CommitteeRepository committeeRepository) {
+  public CommitteeService(CommitteeRepository committeeRepository, DelegateRepository delegateRepository) {
     this.committeeRepository = committeeRepository;
+    this.delegateRepository = delegateRepository;
   }
 
   @Transactional(readOnly = true)
@@ -152,19 +155,19 @@ public class CommitteeService {
   }
 
   public Committee incrementCounter(String committeeId, String delegateId, CounterField field, int delta) {
-    Committee committee = getCommittee(committeeId);
-    Delegate delegate =
-        committee.getDelegates().stream()
-            .filter(d -> d.getId().equals(delegateId))
-            .findFirst()
-            .orElseThrow(() -> new NotFoundException("Delegate not found: " + delegateId));
+    // Ensures a 404 for a bad committeeId even if delegateId happens to exist elsewhere.
+    getCommittee(committeeId);
 
-    switch (field) {
-      case SPEECHES -> delegate.setSpeeches(Math.max(0, delegate.getSpeeches() + delta));
-      case AMENDMENTS -> delegate.setAmendments(Math.max(0, delegate.getAmendments() + delta));
-      case POIS -> delegate.setPois(Math.max(0, delegate.getPois() + delta));
+    int updated =
+        switch (field) {
+          case SPEECHES -> delegateRepository.incrementSpeeches(delegateId, committeeId, delta);
+          case AMENDMENTS -> delegateRepository.incrementAmendments(delegateId, committeeId, delta);
+          case POIS -> delegateRepository.incrementPois(delegateId, committeeId, delta);
+        };
+    if (updated == 0) {
+      throw new NotFoundException("Delegate not found: " + delegateId);
     }
-    return committeeRepository.save(committee);
+    return getCommittee(committeeId);
   }
 
   @SuppressWarnings("unchecked")
