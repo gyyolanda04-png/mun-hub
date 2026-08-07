@@ -52,6 +52,8 @@ interface StoreValue {
   applyRemoteUpdate: (committee: Committee) => void
   /** Removes a committee that was deleted by another chair, live. */
   applyRemoteDelete: (committeeId: string) => void
+  /** Re-fetch one committee from the server (polling safety net for live sync). */
+  refreshCommittee: (committeeId: string) => Promise<void>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -259,6 +261,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     applyRemoteDelete(committeeId) {
       setCommittees((prev) => prev.filter((c) => c.id !== committeeId))
+    },
+    async refreshCommittee(committeeId) {
+      try {
+        const fresh = await api.getCommittee(committeeId)
+        replaceCommittee(fresh)
+      } catch (err) {
+        // Best-effort background sync; ignore transient failures.
+        console.log("[mun-hub] committee refresh failed", err)
+      }
     },
   }
 

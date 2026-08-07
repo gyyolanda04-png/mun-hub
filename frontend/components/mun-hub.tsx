@@ -35,10 +35,22 @@ export function MunHub() {
 }
 
 function AuthenticatedApp({ username }: { username: string }) {
-  const { ready, applyRemoteUpdate, applyRemoteDelete } = useStore()
+  const { ready, applyRemoteUpdate, applyRemoteDelete, refreshCommittee } = useStore()
   const { logout } = useAuth()
   const [openCommitteeId, setOpenCommitteeId] = useState<string | null>(null)
   const [presenting, setPresenting] = useState(false)
+
+  // Safety net for live sync: while a committee is open, re-fetch it on an
+  // interval so chairs stay in sync even if the WebSocket push doesn't arrive
+  // (e.g. a dropped connection on free-tier hosting). The WebSocket above is
+  // still what makes updates feel instant; this just guarantees eventual sync.
+  useEffect(() => {
+    if (!openCommitteeId) return
+    const id = setInterval(() => {
+      void refreshCommittee(openCommitteeId)
+    }, 5000)
+    return () => clearInterval(id)
+  }, [openCommitteeId, refreshCommittee])
 
   // Live sync: while a committee is open (workspace or presentation mode),
   // subscribe to its topic so another chair's changes show up instantly.
