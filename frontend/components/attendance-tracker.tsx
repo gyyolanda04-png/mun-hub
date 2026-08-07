@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { AddDelegateDialog } from "@/components/add-delegate-dialog"
 import { toast } from "sonner"
 
 export function AttendanceTracker({ committeeId }: { committeeId: string }) {
@@ -42,17 +50,20 @@ export function AttendanceTracker({ committeeId }: { committeeId: string }) {
     setAddingSession(false)
   }
 
-  if (delegates.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-muted-foreground">
-        Import delegates below to start tracking attendance.
-      </p>
-    )
-  }
-
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="max-h-[65vh] overflow-auto">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <MajorityInfo delegates={delegates} attendanceSessions={attendanceSessions} />
+        <AddDelegateDialog committeeId={committeeId} />
+      </div>
+
+      {delegates.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          Import delegates below, or add one manually, to start tracking attendance.
+        </p>
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <div className="max-h-[65vh] overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -153,7 +164,72 @@ export function AttendanceTracker({ committeeId }: { committeeId: string }) {
             })}
           </TableBody>
         </Table>
-      </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function computeMajorities(n: number): { simple: number; twoThirds: number } {
+  if (n <= 0) return { simple: 0, twoThirds: 0 }
+  return {
+    // Strictly more than half.
+    simple: Math.floor(n / 2) + 1,
+    // At least two-thirds.
+    twoThirds: Math.ceil((2 * n) / 3),
+  }
+}
+
+/**
+ * Majority calculator (F3). Voting members defaults to the full roster, but
+ * officers can base it on who was present in a given attendance session.
+ */
+function MajorityInfo({
+  delegates,
+  attendanceSessions,
+}: {
+  delegates: { attendance: Record<string, boolean> }[]
+  attendanceSessions: string[]
+}) {
+  const [basis, setBasis] = useState<string>("all")
+  const count =
+    basis === "all"
+      ? delegates.length
+      : delegates.filter((d) => d.attendance[basis]).length
+  const { simple, twoThirds } = computeMajorities(count)
+
+  return (
+    <Card className="flex flex-wrap items-center gap-5 px-4 py-3">
+      <Stat label="Voting members" value={count} />
+      <Stat label="Simple majority (>50%)" value={simple} />
+      <Stat label="Two-thirds (≥67%)" value={twoThirds} />
+      {attendanceSessions.length > 0 ? (
+        <Select value={basis} onValueChange={(v) => setBasis(v ?? "all")}>
+          <SelectTrigger className="h-8 w-[170px] text-xs" aria-label="Voting basis">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All delegates</SelectItem>
+            {attendanceSessions.map((s) => (
+              <SelectItem key={s} value={s}>
+                Present: {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
     </Card>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-serif text-xl font-semibold tabular-nums text-foreground">
+        {value}
+      </span>
+    </div>
   )
 }
