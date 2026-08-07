@@ -17,8 +17,16 @@ public class DebateState {
 
   private int totalDuration = 180;
   private int resolutions = 2;
+
+  // Reuse the pre-rename columns so existing committees keep their values and
+  // don't hit NULL-into-primitive load errors (Hibernate ddl-auto=update won't
+  // backfill a freshly-added column).
+  @Column(name = "opening_ceremony")
   private int openingSpeech = 15;
+
+  @Column(name = "closing_ceremony")
   private int closingSpeech = 15;
+
   private int amendmentsPerResolution = 3;
 
   @Enumerated(EnumType.STRING)
