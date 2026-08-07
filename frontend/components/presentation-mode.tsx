@@ -15,6 +15,7 @@ import { useStore } from "@/lib/store"
 import {
   STAGE_LABELS,
   STAGE_ORDER,
+  AMENDMENT_TYPE_LABELS,
   type DebateStage,
   type Delegate,
 } from "@/lib/types"
@@ -94,6 +95,9 @@ export function PresentationMode({
     (d) => d.id !== debate.currentSpeakerId && !debate.speakerQueue.includes(d.id),
   )
 
+  const presentedAmendment =
+    committee.amendments.find((a) => a.id === committee.presentedAmendmentId) ?? null
+
   return (
     <div className="dark flex min-h-screen flex-col bg-background text-foreground">
       {/* Top bar */}
@@ -122,6 +126,28 @@ export function PresentationMode({
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* Display */}
         <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12 text-center md:px-12">
+          {presentedAmendment ? (
+            <div className="w-full max-w-3xl rounded-xl border border-primary/40 bg-card px-8 py-6 text-left">
+              <h2 className="font-serif text-3xl font-semibold md:text-4xl">
+                Amendment
+                {presentedAmendment.friendly ? " (Friendly)" : ""}
+              </h2>
+              <p className="mt-3 text-lg">
+                <span className="text-muted-foreground">Submitted by: </span>
+                <span className="font-medium">{presentedAmendment.submitter || "—"}</span>
+              </p>
+              <p className="mt-1 text-lg font-medium">
+                {AMENDMENT_TYPE_LABELS[presentedAmendment.type]}
+                {presentedAmendment.clauseRef ? ` ${presentedAmendment.clauseRef}` : ""}
+              </p>
+              <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
+                Amendment Content
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-lg leading-relaxed">
+                {presentedAmendment.text}
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-col items-center gap-3">
             <span className="rounded-full bg-primary/15 px-4 py-1.5 text-sm font-medium uppercase tracking-wide text-primary">
               {STAGE_LABELS[debate.stage]}

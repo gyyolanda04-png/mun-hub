@@ -1,7 +1,11 @@
 package com.munhub.backend.service;
 
 import com.munhub.backend.dto.CounterField;
+import com.munhub.backend.dto.CreateAmendmentRequest;
 import com.munhub.backend.dto.DelegateInput;
+import com.munhub.backend.model.Amendment;
+import com.munhub.backend.model.AmendmentStatus;
+import com.munhub.backend.model.AmendmentType;
 import com.munhub.backend.exception.NotFoundException;
 import com.munhub.backend.model.Committee;
 import com.munhub.backend.model.DebateStage;
@@ -283,6 +287,125 @@ public class CommitteeService {
     }
 
     return saveAndBroadcast(committee);
+  }
+
+  // ---- Amendments (F2) ----
+
+  public Committee createAmendment(String committeeId, User currentUser, CreateAmendmentRequest req) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    Amendment a = new Amendment();
+    a.setId(UUID.randomUUID().toString());
+    a.setCommittee(committee);
+    a.setSubmitterId(req.submitterId());
+    a.setSubmitter(resolveSubmitterName(committee, req.submitterId()));
+    a.setType(parseType(req.type()));
+    a.setClauseRef(req.clauseRef() == null ? "" : req.clauseRef().trim());
+    a.setText(req.text() == null ? "" : req.text());
+    a.setFriendly(Boolean.TRUE.equals(req.friendly()));
+    a.setStatus(AmendmentStatus.PENDING);
+    a.setParentId(req.parentId());
+    a.setCreatedAt(System.currentTimeMillis());
+    committee.getAmendments().add(a);
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee updateAmendment(
+      String committeeId, User currentUser, String amendmentId, Map<String, Object> patch) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    Amendment a =
+        committee.getAmendments().stream()
+            .filter(x -> x.getId().equals(amendmentId))
+            .findFirst()
+            .orElseThrow(() -> new NotFoundException("Amendment not found: " + amendmentId));
+    if (patch.containsKey("type")) {
+      a.setType(parseType(asString(patch.get("type"), "type")));
+    }
+    if (patch.containsKey("clauseRef")) {
+      a.setClauseRef(asStringOrEmpty(patch.get("clauseRef")));
+    }
+    if (patch.containsKey("text")) {
+      a.setText(asStringOrEmpty(patch.get("text")));
+    }
+    if (patch.containsKey("friendly")) {
+      Object v = patch.get("friendly");
+      a.setFriendly(v instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(v)));
+    }
+    if (patch.containsKey("status")) {
+      a.setStatus(parseStatus(asString(patch.get("status"), "status")));
+    }
+    if (patch.containsKey("submitterId")) {
+      Object v = patch.get("submitterId");
+      String sid = v == null ? null : String.valueOf(v);
+      a.setSubmitterId(sid);
+      a.setSubmitter(resolveSubmitterName(committee, sid));
+    }
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee deleteAmendment(String committeeId, User currentUser, String amendmentId) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    // Remove the amendment plus any second-degree amendments targeting it.
+    boolean removed =
+        committee
+            .getAmendments()
+            .removeIf(a -> a.getId().equals(amendmentId) || amendmentId.equals(a.getParentId()));
+    if (!removed) {
+      throw new NotFoundException("Amendment not found: " + amendmentId);
+    }
+    if (amendmentId.equals(committee.getPresentedAmendmentId())) {
+      committee.setPresentedAmendmentId(null);
+    }
+    return saveAndBroadcast(committee);
+  }
+
+  /** Push an amendment to Presentation Mode, or clear it when amendmentId is null. */
+  public Committee presentAmendment(String committeeId, User currentUser, String amendmentId) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    if (amendmentId != null) {
+      boolean exists =
+          committee.getAmendments().stream().anyMatch(a -> a.getId().equals(amendmentId));
+      if (!exists) {
+        throw new NotFoundException("Amendment not found: " + amendmentId);
+      }
+    }
+    committee.setPresentedAmendmentId(amendmentId);
+    return saveAndBroadcast(committee);
+  }
+
+  private String resolveSubmitterName(Committee committee, String submitterId) {
+    if (submitterId == null) return "";
+    return committee.getDelegates().stream()
+        .filter(d -> d.getId().equals(submitterId))
+        .findFirst()
+        .map(Delegate::getDelegation)
+        .orElse("");
+  }
+
+  private AmendmentType parseType(String s) {
+    if (s == null || s.isBlank()) return AmendmentType.ADD;
+    try {
+      return AmendmentType.valueOf(s.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid amendment type: " + s);
+    }
+  }
+
+  private AmendmentStatus parseStatus(String s) {
+    if (s == null || s.isBlank()) return AmendmentStatus.PENDING;
+    try {
+      return AmendmentStatus.valueOf(s.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid amendment status: " + s);
+    }
+  }
+
+  private String asString(Object v, String field) {
+    if (v instanceof String s) return s;
+    throw new IllegalArgumentException(field + " must be a string");
+  }
+
+  private String asStringOrEmpty(Object v) {
+    return v == null ? "" : String.valueOf(v);
   }
 
   private int asInt(Object value, String field) {

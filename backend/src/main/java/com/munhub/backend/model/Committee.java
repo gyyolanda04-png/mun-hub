@@ -33,6 +33,13 @@ public class Committee {
   @OrderColumn(name = "delegate_position")
   private List<Delegate> delegates = new ArrayList<>();
 
+  @OneToMany(mappedBy = "committee", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderColumn(name = "amendment_position")
+  private List<Amendment> amendments = new ArrayList<>();
+
+  /** The amendment currently pushed to Presentation Mode (null = none shown). */
+  private String presentedAmendmentId;
+
   @Embedded
   private DebateState debate = new DebateState();
 
@@ -81,6 +88,22 @@ public class Committee {
 
   public void setDelegates(List<Delegate> delegates) {
     this.delegates = delegates != null ? delegates : new ArrayList<>();
+  }
+
+  public List<Amendment> getAmendments() {
+    return amendments;
+  }
+
+  public void setAmendments(List<Amendment> amendments) {
+    this.amendments = amendments != null ? amendments : new ArrayList<>();
+  }
+
+  public String getPresentedAmendmentId() {
+    return presentedAmendmentId;
+  }
+
+  public void setPresentedAmendmentId(String presentedAmendmentId) {
+    this.presentedAmendmentId = presentedAmendmentId;
   }
 
   public DebateState getDebate() {

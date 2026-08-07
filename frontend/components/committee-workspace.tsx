@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   Timer,
   ListChecks,
+  FileEdit,
   UploadCloud,
   Users,
   UserPlus,
@@ -30,6 +31,7 @@ import {
 import { DelegateImport } from "@/components/delegate-import"
 import { AttendanceTracker } from "@/components/attendance-tracker"
 import { ParticipationTracker } from "@/components/participation-tracker"
+import { AmendmentsPanel } from "@/components/amendments-panel"
 import { TimingCalculator } from "@/components/timing-calculator"
 
 export function CommitteeWorkspace({
@@ -106,6 +108,10 @@ export function CommitteeWorkspace({
             <ListChecks className="size-4" />
             Participation
           </TabsTrigger>
+          <TabsTrigger value="amendments">
+            <FileEdit className="size-4" />
+            Amendments
+          </TabsTrigger>
           <TabsTrigger value="timing">
             <Timer className="size-4" />
             Debate Timing
@@ -146,6 +152,10 @@ export function CommitteeWorkspace({
           ) : (
             <ParticipationTracker committeeId={committeeId} />
           )}
+        </TabsContent>
+
+        <TabsContent value="amendments" className="mt-6">
+          <AmendmentsPanel committeeId={committeeId} />
         </TabsContent>
 
         <TabsContent value="timing" className="mt-6">

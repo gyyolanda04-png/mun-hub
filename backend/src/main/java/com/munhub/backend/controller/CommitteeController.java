@@ -4,6 +4,7 @@ import com.munhub.backend.dto.AddAttendanceSessionRequest;
 import com.munhub.backend.dto.AddDelegatesRequest;
 import com.munhub.backend.dto.AddMemberRequest;
 import com.munhub.backend.dto.CommitteeResponse;
+import com.munhub.backend.dto.CreateAmendmentRequest;
 import com.munhub.backend.dto.CreateCommitteeRequest;
 import com.munhub.backend.dto.IncrementCounterRequest;
 import com.munhub.backend.dto.SetAttendanceRequest;
@@ -136,6 +137,47 @@ public class CommitteeController {
   public CommitteeResponse removeAttendanceSession(
       @AuthenticationPrincipal User currentUser, @PathVariable String id, @PathVariable String session) {
     Committee committee = committeeService.removeAttendanceSession(id, currentUser, session);
+    return CommitteeResponse.from(committee);
+  }
+
+  // ---- Amendments (F2) ----
+
+  @PostMapping("/{id}/amendments")
+  public CommitteeResponse createAmendment(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @RequestBody CreateAmendmentRequest request) {
+    Committee committee = committeeService.createAmendment(id, currentUser, request);
+    return CommitteeResponse.from(committee);
+  }
+
+  @PatchMapping("/{id}/amendments/{amendmentId}")
+  public CommitteeResponse updateAmendment(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String amendmentId,
+      @RequestBody Map<String, Object> patch) {
+    Committee committee = committeeService.updateAmendment(id, currentUser, amendmentId, patch);
+    return CommitteeResponse.from(committee);
+  }
+
+  @DeleteMapping("/{id}/amendments/{amendmentId}")
+  public CommitteeResponse deleteAmendment(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String amendmentId) {
+    Committee committee = committeeService.deleteAmendment(id, currentUser, amendmentId);
+    return CommitteeResponse.from(committee);
+  }
+
+  @PostMapping("/{id}/present-amendment")
+  public CommitteeResponse presentAmendment(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @RequestBody Map<String, Object> body) {
+    Object v = body.get("amendmentId");
+    String amendmentId = v == null ? null : String.valueOf(v);
+    Committee committee = committeeService.presentAmendment(id, currentUser, amendmentId);
     return CommitteeResponse.from(committee);
   }
 }

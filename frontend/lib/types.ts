@@ -37,6 +37,53 @@ export type DebateStage =
   | "voting"
   | "closing"
 
+export type AmendmentType = "ADD" | "STRIKE" | "MODIFY"
+export type AmendmentStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "ENTERTAINING"
+  | "PASSED"
+  | "FAILED"
+
+export interface Amendment {
+  id: string
+  /** Delegate id of the submitter (null if unset). */
+  submitterId: string | null
+  /** Denormalized delegation name of the submitter, for display. */
+  submitter: string
+  type: AmendmentType
+  /** Clause being amended, e.g. "1. e." or "clause 6". */
+  clauseRef: string
+  text: string
+  friendly: boolean
+  status: AmendmentStatus
+  /** Set when this amends another amendment (second-degree). */
+  parentId: string | null
+  createdAt: number
+}
+
+export const AMENDMENT_STATUSES: AmendmentStatus[] = [
+  "PENDING",
+  "ENTERTAINING",
+  "APPROVED",
+  "PASSED",
+  "FAILED",
+]
+
+export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
+  PENDING: "Pending",
+  ENTERTAINING: "Entertaining",
+  APPROVED: "Approved",
+  PASSED: "Passed",
+  FAILED: "Failed",
+}
+
+export const AMENDMENT_TYPE_LABELS: Record<AmendmentType, string> = {
+  ADD: "Add",
+  STRIKE: "Strike",
+  MODIFY: "Modify",
+}
+
 export interface Committee {
   id: string
   name: string
@@ -47,6 +94,9 @@ export interface Committee {
   attendanceSessions: string[]
   /** Usernames of the chairs who can see and edit this committee. */
   members: string[]
+  amendments: Amendment[]
+  /** Amendment currently shown in Presentation Mode (null = none). */
+  presentedAmendmentId: string | null
 }
 
 export const STAGE_LABELS: Record<DebateStage, string> = {
