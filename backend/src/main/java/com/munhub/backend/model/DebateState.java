@@ -17,8 +17,8 @@ public class DebateState {
 
   private int totalDuration = 180;
   private int resolutions = 2;
-  private int openingCeremony = 15;
-  private int closingCeremony = 15;
+  private int openingSpeech = 15;
+  private int closingSpeech = 15;
   private int amendmentsPerResolution = 3;
 
   @Enumerated(EnumType.STRING)
@@ -52,20 +52,20 @@ public class DebateState {
     this.resolutions = resolutions;
   }
 
-  public int getOpeningCeremony() {
-    return openingCeremony;
+  public int getOpeningSpeech() {
+    return openingSpeech;
   }
 
-  public void setOpeningCeremony(int openingCeremony) {
-    this.openingCeremony = openingCeremony;
+  public void setOpeningSpeech(int openingSpeech) {
+    this.openingSpeech = openingSpeech;
   }
 
-  public int getClosingCeremony() {
-    return closingCeremony;
+  public int getClosingSpeech() {
+    return closingSpeech;
   }
 
-  public void setClosingCeremony(int closingCeremony) {
-    this.closingCeremony = closingCeremony;
+  public void setClosingSpeech(int closingSpeech) {
+    this.closingSpeech = closingSpeech;
   }
 
   public int getAmendmentsPerResolution() {

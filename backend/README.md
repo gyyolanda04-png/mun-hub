@@ -132,7 +132,7 @@ types. Accessing or modifying a committee you're not a member of returns
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/committees` | List committees you're a member of, newest first |
-| POST | `/api/committees` | Create a committee — `{ "name": string, "topic": string }` |
+| POST | `/api/committees` | Create a committee — `{ "name": string }` |
 | GET | `/api/committees/{id}` | Get one committee |
 | DELETE | `/api/committees/{id}` | Delete a committee |
 | POST | `/api/committees/{id}/delegates` | Bulk-add delegates — `{ "delegates": [{ "delegation", "name", "school", "email", "attendance" }], "attendanceSessions": [...] }`. `delegation` (the country/delegation represented) is required and must be unique within the committee — inputs whose delegation already exists (in the committee or earlier in the same batch, case-insensitive) are silently skipped rather than duplicated. `attendanceSessions` is merged into the committee's session list (new names appended, duplicates ignored) |
@@ -148,7 +148,7 @@ types. Accessing or modifying a committee you're not a member of returns
 ```bash
 curl -X POST http://localhost:8080/api/committees \
   -H 'Content-Type: application/json' \
-  -d '{"name":"UNSC","topic":"Nuclear Non-Proliferation"}'
+  -d '{"name":"UNSC"}'
 ```
 
 ### Committee JSON shape
@@ -157,7 +157,6 @@ curl -X POST http://localhost:8080/api/committees \
 {
   "id": "uuid",
   "name": "UNSC",
-  "topic": "Nuclear Non-Proliferation",
   "createdAt": 1234567890,
   "delegates": [
     {
@@ -166,6 +165,7 @@ curl -X POST http://localhost:8080/api/committees \
       "name": "Alice",
       "school": "Columbia",
       "email": "alice@x.com",
+      "bloc": "Western Bloc",
       "speeches": 0,
       "amendments": 0,
       "pois": 0,
@@ -175,8 +175,8 @@ curl -X POST http://localhost:8080/api/committees \
   "debate": {
     "totalDuration": 180,
     "resolutions": 2,
-    "openingCeremony": 15,
-    "closingCeremony": 15,
+    "openingSpeech": 5,
+    "closingSpeech": 5,
     "amendmentsPerResolution": 3,
     "stage": "opening",
     "currentResolution": 1,

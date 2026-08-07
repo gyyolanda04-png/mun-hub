@@ -20,7 +20,7 @@ import { ApiError } from "@/lib/api"
 interface StoreValue {
   committees: Committee[]
   ready: boolean
-  createCommittee: (name: string, topic: string) => Promise<Committee>
+  createCommittee: (name: string) => Promise<Committee>
   deleteCommittee: (id: string) => void
   getCommittee: (id: string) => Committee | undefined
   addDelegates: (
@@ -99,8 +99,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreValue = {
     committees,
     ready,
-    async createCommittee(name, topic) {
-      const committee = await api.createCommittee(name.trim(), topic.trim())
+    async createCommittee(name) {
+      const committee = await api.createCommittee(name.trim())
       setCommittees((prev) => [committee, ...prev])
       return committee
     },

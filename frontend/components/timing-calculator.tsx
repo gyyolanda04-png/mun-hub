@@ -23,8 +23,8 @@ const INPUTS: {
     DebateState,
     | "totalDuration"
     | "resolutions"
-    | "openingCeremony"
-    | "closingCeremony"
+    | "openingSpeech"
+    | "closingSpeech"
     | "amendmentsPerResolution"
   >
   label: string
@@ -32,8 +32,8 @@ const INPUTS: {
 }[] = [
   { key: "totalDuration", label: "Total committee duration", hint: "minutes" },
   { key: "resolutions", label: "Number of resolutions", hint: "count" },
-  { key: "openingCeremony", label: "Opening ceremony", hint: "minutes" },
-  { key: "closingCeremony", label: "Closing ceremony", hint: "minutes" },
+  { key: "openingSpeech", label: "Opening speech (per resolution)", hint: "minutes" },
+  { key: "closingSpeech", label: "Closing speech (per resolution)", hint: "minutes" },
   {
     key: "amendmentsPerResolution",
     label: "Amendments per resolution",
@@ -97,7 +97,7 @@ export function TimingCalculator({ committeeId }: { committeeId: string }) {
           icon={Clock}
           label="Time available for debate"
           value={formatMinutes(result.debateTime)}
-          detail={`${debate.totalDuration}m total − ${debate.openingCeremony}m + ${debate.closingCeremony}m ceremony`}
+          detail={`${debate.totalDuration}m total − ${formatMinutes(result.totalSpeechTime)} of speeches (${Math.max(1, debate.resolutions)}× opening + closing)`}
           highlight
         />
         <ResultCard

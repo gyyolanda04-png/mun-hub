@@ -7,7 +7,6 @@ import java.util.List;
 public record CommitteeResponse(
     String id,
     String name,
-    String topic,
     long createdAt,
     List<DelegateResponse> delegates,
     DebateStateResponse debate,
@@ -18,7 +17,6 @@ public record CommitteeResponse(
     return new CommitteeResponse(
         c.getId(),
         c.getName(),
-        c.getTopic(),
         c.getCreatedAt(),
         c.getDelegates().stream().map(DelegateResponse::from).toList(),
         DebateStateResponse.from(c.getDebate()),

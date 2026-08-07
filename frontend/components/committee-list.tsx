@@ -21,7 +21,6 @@ export function CommitteeList({ onOpen }: { onOpen: (id: string) => void }) {
   const { committees, createCommittee, deleteCommittee } = useStore()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
-  const [topic, setTopic] = useState("")
 
   async function handleCreate() {
     if (!name.trim()) {
@@ -29,9 +28,8 @@ export function CommitteeList({ onOpen }: { onOpen: (id: string) => void }) {
       return
     }
     try {
-      const committee = await createCommittee(name, topic)
+      const committee = await createCommittee(name)
       setName("")
-      setTopic("")
       setOpen(false)
       toast.success(`Committee "${committee.name}" created.`)
       onOpen(committee.id)
@@ -74,16 +72,10 @@ export function CommitteeList({ onOpen }: { onOpen: (id: string) => void }) {
                   placeholder="e.g. UN Security Council"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleCreate()
+                  }}
                   autoFocus
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="committee-topic">Topic (optional)</Label>
-                <Input
-                  id="committee-topic"
-                  placeholder="e.g. The Situation in the South China Sea"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
                 />
               </div>
             </div>
@@ -120,15 +112,6 @@ export function CommitteeList({ onOpen }: { onOpen: (id: string) => void }) {
                 <h2 className="font-serif text-lg font-semibold leading-snug text-pretty text-foreground">
                   {c.name}
                 </h2>
-                {c.topic ? (
-                  <p className="line-clamp-2 text-sm text-muted-foreground">
-                    {c.topic}
-                  </p>
-                ) : (
-                  <p className="text-sm italic text-muted-foreground/70">
-                    No topic set
-                  </p>
-                )}
               </div>
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">

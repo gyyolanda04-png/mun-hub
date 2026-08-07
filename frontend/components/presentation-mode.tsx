@@ -107,11 +107,6 @@ export function PresentationMode({
           <span className="font-serif text-lg font-semibold">
             {committee.name}
           </span>
-          {committee.topic ? (
-            <span className="text-sm text-muted-foreground">
-              {committee.topic}
-            </span>
-          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <Button

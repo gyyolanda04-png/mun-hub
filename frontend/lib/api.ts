@@ -105,10 +105,10 @@ export function listCommittees(): Promise<Committee[]> {
   return request<Committee[]>("/api/committees")
 }
 
-export function createCommittee(name: string, topic: string): Promise<Committee> {
+export function createCommittee(name: string): Promise<Committee> {
   return request<Committee>("/api/committees", {
     method: "POST",
-    body: JSON.stringify({ name, topic }),
+    body: JSON.stringify({ name }),
   })
 }
 

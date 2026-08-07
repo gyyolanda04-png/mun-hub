@@ -36,6 +36,9 @@ public class Delegate {
   private String school;
   private String email;
 
+  /** Voting/negotiation bloc this delegate belongs to (officer-configurable). */
+  private String bloc;
+
   private int speeches = 0;
   private int amendments = 0;
   private int pois = 0;
@@ -89,6 +92,14 @@ public class Delegate {
 
   public void setEmail(String email) {
     this.email = email;
+  }
+
+  public String getBloc() {
+    return bloc;
+  }
+
+  public void setBloc(String bloc) {
+    this.bloc = bloc;
   }
 
   public int getSpeeches() {

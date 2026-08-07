@@ -44,7 +44,7 @@ public class CommitteeController {
   @ResponseStatus(HttpStatus.CREATED)
   public CommitteeResponse createCommittee(
       @AuthenticationPrincipal User currentUser, @Valid @RequestBody CreateCommitteeRequest request) {
-    Committee committee = committeeService.createCommittee(request.name(), request.topic(), currentUser);
+    Committee committee = committeeService.createCommittee(request.name(), currentUser);
     return CommitteeResponse.from(committee);
   }
 

@@ -6,6 +6,7 @@ export interface ParsedDelegate {
   name: string
   school: string
   email: string
+  bloc: string
   attendance: Record<string, boolean>
 }
 
@@ -19,7 +20,8 @@ const DELEGATION_KEYS = ["delegation", "country", "nation", "assigned country", 
 const NAME_KEYS = ["name", "delegate", "delegate name", "fullname", "full name"]
 const SCHOOL_KEYS = ["school", "institution", "organisation", "organization"]
 const EMAIL_KEYS = ["email", "e-mail", "mail", "email address"]
-const KNOWN_KEYS = [...DELEGATION_KEYS, ...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS]
+const BLOC_KEYS = ["bloc", "block", "voting bloc", "group", "alliance", "coalition"]
+const KNOWN_KEYS = [...DELEGATION_KEYS, ...NAME_KEYS, ...SCHOOL_KEYS, ...EMAIL_KEYS, ...BLOC_KEYS]
 
 // Matches column headers like "Day 1", "Day 2- Morning", "Session 3", "Afternoon".
 const ATTENDANCE_HEADER_PATTERN = /\bday\s*\d|\bsession\s*\d|morning|afternoon|evening|\blunch\b/i
@@ -112,13 +114,14 @@ export async function parseDelegateFile(file: File): Promise<ParsedDelegateFile>
     const name = pick(row, NAME_KEYS)
     const school = pick(row, SCHOOL_KEYS)
     const email = pick(row, EMAIL_KEYS).replace(/^mailto:/i, "").trim()
+    const bloc = pick(row, BLOC_KEYS)
     if (!delegation && !name && !school && !email) continue
 
     const attendance: Record<string, boolean> = {}
     for (const session of attendanceSessions) {
       attendance[session] = parsePresent(row[session])
     }
-    parsed.push({ delegation, name: name || "Unnamed Delegate", school, email, attendance })
+    parsed.push({ delegation, name: name || "Unnamed Delegate", school, email, bloc, attendance })
   }
   return { delegates: parsed, attendanceSessions }
 }
@@ -139,6 +142,7 @@ export function exportCommittee(
     "Delegate Name": d.name,
     School: d.school,
     Email: d.email,
+    Bloc: d.bloc,
     "Total Speeches": d.speeches,
     "Total Amendments": d.amendments,
     "Total POIs": d.pois,
