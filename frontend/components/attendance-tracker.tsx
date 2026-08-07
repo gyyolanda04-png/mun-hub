@@ -52,10 +52,11 @@ export function AttendanceTracker({ committeeId }: { committeeId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <MajorityInfo delegates={delegates} attendanceSessions={attendanceSessions} />
+      <div className="flex justify-end">
         <AddDelegateDialog committeeId={committeeId} />
       </div>
+
+      <MajorityInfo delegates={delegates} attendanceSessions={attendanceSessions} />
 
       {delegates.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
@@ -200,24 +201,29 @@ function MajorityInfo({
   const { simple, twoThirds } = computeMajorities(count)
 
   return (
-    <Card className="flex flex-wrap items-center gap-5 px-4 py-3">
+    <Card className="flex flex-wrap items-center gap-x-10 gap-y-3 px-5 py-3">
       <Stat label="Voting members" value={count} />
+      <div className="h-8 w-px bg-border" aria-hidden="true" />
       <Stat label="Simple majority (>50%)" value={simple} />
+      <div className="h-8 w-px bg-border" aria-hidden="true" />
       <Stat label="Two-thirds (≥67%)" value={twoThirds} />
       {attendanceSessions.length > 0 ? (
-        <Select value={basis} onValueChange={(v) => setBasis(v ?? "all")}>
-          <SelectTrigger className="h-8 w-[170px] text-xs" aria-label="Voting basis">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All delegates</SelectItem>
-            {attendanceSessions.map((s) => (
-              <SelectItem key={s} value={s}>
-                Present: {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Based on</span>
+          <Select value={basis} onValueChange={(v) => setBasis(v ?? "all")}>
+            <SelectTrigger className="h-8 w-[180px] text-xs" aria-label="Voting basis">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All delegates</SelectItem>
+              {attendanceSessions.map((s) => (
+                <SelectItem key={s} value={s}>
+                  Present: {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       ) : null}
     </Card>
   )
@@ -225,11 +231,11 @@ function MajorityInfo({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-col">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-serif text-xl font-semibold tabular-nums text-foreground">
+    <div className="flex items-baseline gap-2.5">
+      <span className="font-serif text-2xl font-semibold tabular-nums text-foreground">
         {value}
       </span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   )
 }
