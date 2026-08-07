@@ -19,13 +19,7 @@ import {
   type Delegate,
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 export function PresentationMode({
   committeeId,
@@ -37,6 +31,7 @@ export function PresentationMode({
   const { getCommittee, updateDebate } = useStore()
   const committee = getCommittee(committeeId)
   const [controlsOpen, setControlsOpen] = useState(true)
+  const [queueSearch, setQueueSearch] = useState("")
 
   const debate = committee?.debate
   const delegates = committee?.delegates ?? []
@@ -249,26 +244,57 @@ export function PresentationMode({
                 <UserCheck className="size-4" />
                 Next speaker from queue
               </Button>
-              <div className="flex items-center gap-2">
-                <Select value="" onValueChange={addToQueue}>
-                  <SelectTrigger aria-label="Add delegate to queue">
-                    <SelectValue placeholder="Add to queue…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableForQueue.length === 0 ? (
-                      <SelectItem value="none" disabled>
-                        No delegates available
-                      </SelectItem>
-                    ) : (
-                      availableForQueue.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.delegation}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <Plus className="size-4 text-muted-foreground" aria-hidden="true" />
+              <div className="flex flex-col gap-2">
+                <Input
+                  value={queueSearch}
+                  onChange={(e) => setQueueSearch(e.target.value)}
+                  placeholder="Search delegate to add…"
+                  aria-label="Search delegate to add to queue"
+                />
+                {(() => {
+                  const q = queueSearch.trim().toLowerCase()
+                  const matches = q
+                    ? availableForQueue.filter(
+                        (d) =>
+                          d.delegation.toLowerCase().includes(q) ||
+                          d.name.toLowerCase().includes(q),
+                      )
+                    : availableForQueue
+                  if (matches.length === 0) {
+                    return (
+                      <p className="px-1 text-xs text-muted-foreground">
+                        {availableForQueue.length === 0
+                          ? "Everyone is already in the queue."
+                          : "No matching delegates."}
+                      </p>
+                    )
+                  }
+                  return (
+                    <div className="max-h-44 overflow-auto rounded-md border border-border">
+                      {matches.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            addToQueue(d.id)
+                            setQueueSearch("")
+                          }}
+                          className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                        >
+                          <span>
+                            {d.delegation}
+                            {d.name ? (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {d.name}
+                              </span>
+                            ) : null}
+                          </span>
+                          <Plus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
               </div>
               {speaker ? (
                 <Button
