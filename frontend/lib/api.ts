@@ -12,16 +12,51 @@ export class ApiError extends Error {
   }
 }
 
+// Free hosting (Render) spins the backend down after ~15 min idle; the first
+// request then either fails to connect or returns 502/503/504 for up to a
+// minute while it wakes back up. Retry those transparently so a cold start
+// looks like "a bit slow" instead of "broken".
+const COLD_START_RETRIES = 5
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`
+  const options: RequestInit = {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
-  })
+  }
+
+  let res: Response | undefined
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(url, options)
+    } catch {
+      // Network-level failure: server unreachable or still cold-starting.
+      if (attempt < COLD_START_RETRIES) {
+        await sleep(2500 * (attempt + 1))
+        continue
+      }
+      throw new ApiError(
+        0,
+        "Couldn't reach the server. It may be waking up — wait a moment and try again.",
+      )
+    }
+    // Platform gateway errors while the app boots: keep waiting it out.
+    if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < COLD_START_RETRIES) {
+      await sleep(2500 * (attempt + 1))
+      continue
+    }
+    break
+  }
+
   if (!res.ok) {
     let message = res.statusText
     try {

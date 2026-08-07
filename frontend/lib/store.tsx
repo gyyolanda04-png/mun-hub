@@ -15,6 +15,7 @@ import {
   type DebateState,
 } from "@/lib/types"
 import * as api from "@/lib/api"
+import { ApiError } from "@/lib/api"
 
 interface StoreValue {
   committees: Committee[]
@@ -72,7 +73,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         console.log("[mun-hub] failed to load committees", err)
-        toast.error("Couldn't reach the server. Is the backend running?")
+        if (err instanceof ApiError && err.status === 401) {
+          toast.error("Your session isn't valid anymore. Please log in again.")
+        } else if (err instanceof ApiError && err.status === 0) {
+          // Network-level / cold-start failure — message already explains it.
+          toast.error(err.message)
+        } else if (err instanceof ApiError) {
+          toast.error(`Couldn't load committees (${err.status}). ${err.message}`)
+        } else {
+          toast.error("Couldn't reach the server. Is the backend running?")
+        }
       })
       .finally(() => {
         if (!cancelled) setReady(true)
