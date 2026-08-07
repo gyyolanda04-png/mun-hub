@@ -201,12 +201,10 @@ function MajorityInfo({
   const { simple, twoThirds } = computeMajorities(count)
 
   return (
-    <Card className="flex flex-wrap items-center gap-x-10 gap-y-3 px-5 py-3">
-      <Stat label="Voting members" value={count} />
-      <div className="h-8 w-px bg-border" aria-hidden="true" />
-      <Stat label="Simple majority (>50%)" value={simple} />
-      <div className="h-8 w-px bg-border" aria-hidden="true" />
-      <Stat label="Two-thirds (≥67%)" value={twoThirds} />
+    <div className="flex flex-wrap items-center gap-3">
+      <Pill fraction={1} value={count} label="Voting members" />
+      <Pill fraction={2 / 3} value={twoThirds} label="Two-thirds (67%)" />
+      <Pill fraction={1 / 2} value={simple} label="Simple majority (50%)" />
       {attendanceSessions.length > 0 ? (
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Based on</span>
@@ -225,17 +223,59 @@ function MajorityInfo({
           </Select>
         </div>
       ) : null}
-    </Card>
+    </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+/** A little pie gauge filled to `fraction` of a full circle. */
+function Pie({ fraction }: { fraction: number }) {
+  const r = 12
+  const cx = 14
+  const cy = 14
+  const f = Math.max(0, Math.min(1, fraction))
+  let wedge = null
+  if (f >= 1) {
+    wedge = <circle cx={cx} cy={cy} r={r} className="fill-primary" />
+  } else if (f > 0) {
+    const a = 2 * Math.PI * f - Math.PI / 2
+    const x = cx + r * Math.cos(a)
+    const y = cy + r * Math.sin(a)
+    const large = f > 0.5 ? 1 : 0
+    wedge = (
+      <path
+        d={`M${cx},${cy} L${cx},${cy - r} A${r},${r} 0 ${large} 1 ${x.toFixed(2)},${y.toFixed(2)} Z`}
+        className="fill-primary"
+      />
+    )
+  }
   return (
-    <div className="flex items-baseline gap-2.5">
-      <span className="font-serif text-2xl font-semibold tabular-nums text-foreground">
-        {value}
-      </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+      <circle cx={cx} cy={cy} r={r} className="fill-secondary" />
+      {wedge}
+    </svg>
+  )
+}
+
+function Pill({
+  fraction,
+  value,
+  label,
+}: {
+  fraction: number
+  value: number
+  label: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 shadow-sm">
+      <Pie fraction={fraction} />
+      <div className="flex flex-col leading-tight">
+        <span className="font-serif text-xl font-semibold tabular-nums text-foreground">
+          {value}
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+      </div>
     </div>
   )
 }
