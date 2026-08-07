@@ -9,4 +9,5 @@ public record DelegateInput(
     @NotBlank String name,
     String school,
     String email,
+    String bloc,
     Map<String, Boolean> attendance) {}

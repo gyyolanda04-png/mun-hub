@@ -74,9 +74,6 @@ export function CommitteeWorkspace({
             <h1 className="font-serif text-2xl font-semibold text-balance text-foreground">
               {committee.name}
             </h1>
-            {committee.topic ? (
-              <p className="text-sm text-muted-foreground">{committee.topic}</p>
-            ) : null}
             <div className="mt-1 flex items-center gap-2">
               <Badge variant="secondary">
                 {committee.delegates.length} delegate

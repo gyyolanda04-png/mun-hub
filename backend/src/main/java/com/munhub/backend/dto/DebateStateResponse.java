@@ -7,8 +7,8 @@ import java.util.List;
 public record DebateStateResponse(
     int totalDuration,
     int resolutions,
-    int openingCeremony,
-    int closingCeremony,
+    int openingSpeech,
+    int closingSpeech,
     int amendmentsPerResolution,
     DebateStage stage,
     int currentResolution,
@@ -20,8 +20,8 @@ public record DebateStateResponse(
     return new DebateStateResponse(
         d.getTotalDuration(),
         d.getResolutions(),
-        d.getOpeningCeremony(),
-        d.getClosingCeremony(),
+        d.getOpeningSpeech(),
+        d.getClosingSpeech(),
         d.getAmendmentsPerResolution(),
         d.getStage(),
         d.getCurrentResolution(),

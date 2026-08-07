@@ -315,13 +315,14 @@ function DelegateRow({
 function AddDelegateDialog({
   onAdd,
 }: {
-  onAdd: (d: { delegation: string; name: string; school: string; email: string }) => void
+  onAdd: (d: { delegation: string; name: string; school: string; email: string; bloc: string }) => void
 }) {
   const [open, setOpen] = useState(false)
   const [delegation, setDelegation] = useState("")
   const [name, setName] = useState("")
   const [school, setSchool] = useState("")
   const [email, setEmail] = useState("")
+  const [bloc, setBloc] = useState("")
 
   function submit() {
     if (!delegation.trim()) {
@@ -333,11 +334,13 @@ function AddDelegateDialog({
       name: name.trim(),
       school: school.trim(),
       email: email.trim(),
+      bloc: bloc.trim(),
     })
     setDelegation("")
     setName("")
     setSchool("")
     setEmail("")
+    setBloc("")
     setOpen(false)
   }
 
@@ -376,6 +379,15 @@ function AddDelegateDialog({
           <div className="flex flex-col gap-2">
             <Label htmlFor="d-email">Email</Label>
             <Input id="d-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="d-bloc">Bloc</Label>
+            <Input
+              id="d-bloc"
+              placeholder="e.g. Western Bloc"
+              value={bloc}
+              onChange={(e) => setBloc(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter>

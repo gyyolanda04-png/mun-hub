@@ -73,11 +73,10 @@ public class CommitteeService {
     return committee;
   }
 
-  public Committee createCommittee(String name, String topic, User creator) {
+  public Committee createCommittee(String name, User creator) {
     Committee committee = new Committee();
     committee.setId(UUID.randomUUID().toString());
     committee.setName(name.trim());
-    committee.setTopic(topic == null ? "" : topic.trim());
     committee.setCreatedAt(System.currentTimeMillis());
     committee.setDebate(new DebateState());
     committee.getMembers().add(creator);
@@ -142,6 +141,7 @@ public class CommitteeService {
       delegate.setName(input.name());
       delegate.setSchool(input.school() == null ? "" : input.school());
       delegate.setEmail(input.email() == null ? "" : input.email());
+      delegate.setBloc(input.bloc() == null ? "" : input.bloc().trim());
       delegate.setSpeeches(0);
       delegate.setAmendments(0);
       delegate.setPois(0);
@@ -238,11 +238,11 @@ public class CommitteeService {
     if (patch.containsKey("resolutions")) {
       debate.setResolutions(asInt(patch.get("resolutions"), "resolutions"));
     }
-    if (patch.containsKey("openingCeremony")) {
-      debate.setOpeningCeremony(asInt(patch.get("openingCeremony"), "openingCeremony"));
+    if (patch.containsKey("openingSpeech")) {
+      debate.setOpeningSpeech(asInt(patch.get("openingSpeech"), "openingSpeech"));
     }
-    if (patch.containsKey("closingCeremony")) {
-      debate.setClosingCeremony(asInt(patch.get("closingCeremony"), "closingCeremony"));
+    if (patch.containsKey("closingSpeech")) {
+      debate.setClosingSpeech(asInt(patch.get("closingSpeech"), "closingSpeech"));
     }
     if (patch.containsKey("amendmentsPerResolution")) {
       debate.setAmendmentsPerResolution(asInt(patch.get("amendmentsPerResolution"), "amendmentsPerResolution"));

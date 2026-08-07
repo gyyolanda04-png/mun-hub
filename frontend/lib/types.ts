@@ -5,6 +5,8 @@ export interface Delegate {
   name: string
   school: string
   email: string
+  /** Voting/negotiation bloc this delegate belongs to (officer-configurable). */
+  bloc: string
   speeches: number
   amendments: number
   pois: number
@@ -16,8 +18,8 @@ export interface DebateState {
   // Timing inputs
   totalDuration: number // minutes
   resolutions: number
-  openingCeremony: number // minutes
-  closingCeremony: number // minutes
+  openingSpeech: number // minutes, per resolution
+  closingSpeech: number // minutes, per resolution
   amendmentsPerResolution: number
   // Live presentation state
   stage: DebateStage
@@ -38,7 +40,6 @@ export type DebateStage =
 export interface Committee {
   id: string
   name: string
-  topic: string
   createdAt: number
   delegates: Delegate[]
   debate: DebateState
@@ -49,12 +50,12 @@ export interface Committee {
 }
 
 export const STAGE_LABELS: Record<DebateStage, string> = {
-  opening: "Opening Ceremony",
+  opening: "Opening Speech",
   general: "General Debate",
   resolution: "Resolution Debate",
   amendment: "Amendment Debate",
   voting: "Voting Procedure",
-  closing: "Closing Ceremony",
+  closing: "Closing Speech",
 }
 
 export const STAGE_ORDER: DebateStage[] = [
@@ -70,8 +71,8 @@ export function createDefaultDebate(): DebateState {
   return {
     totalDuration: 180,
     resolutions: 2,
-    openingCeremony: 15,
-    closingCeremony: 15,
+    openingSpeech: 5,
+    closingSpeech: 5,
     amendmentsPerResolution: 3,
     stage: "opening",
     currentResolution: 1,
@@ -86,14 +87,16 @@ export interface TimingResult {
   timePerResolution: number
   amendmentDebateTime: number
   timePerAmendment: number
+  /** Total minutes reserved for opening + closing speeches across all resolutions. */
+  totalSpeechTime: number
 }
 
 export function calculateTiming(debate: DebateState): TimingResult {
-  const debateTime = Math.max(
-    0,
-    debate.totalDuration - debate.openingCeremony - debate.closingCeremony,
-  )
   const resolutions = Math.max(1, debate.resolutions)
+  // Each resolution gets its own opening speech and closing speech.
+  const speechTimePerResolution = debate.openingSpeech + debate.closingSpeech
+  const totalSpeechTime = speechTimePerResolution * resolutions
+  const debateTime = Math.max(0, debate.totalDuration - totalSpeechTime)
   const timePerResolution = debateTime / resolutions
   // Reserve ~40% of each resolution's time for amendment debate
   const amendmentDebateTime = timePerResolution * 0.4
@@ -104,5 +107,6 @@ export function calculateTiming(debate: DebateState): TimingResult {
     timePerResolution,
     amendmentDebateTime,
     timePerAmendment,
+    totalSpeechTime,
   }
 }

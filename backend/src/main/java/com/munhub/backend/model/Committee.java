@@ -27,7 +27,6 @@ public class Committee {
   private String id;
 
   private String name;
-  private String topic;
   private long createdAt;
 
   @OneToMany(mappedBy = "committee", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -66,14 +65,6 @@ public class Committee {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public String getTopic() {
-    return topic;
-  }
-
-  public void setTopic(String topic) {
-    this.topic = topic;
   }
 
   public long getCreatedAt() {
