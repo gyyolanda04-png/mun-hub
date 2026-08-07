@@ -10,6 +10,9 @@ import {
 } from "react"
 import { toast } from "sonner"
 import {
+  type Amendment,
+  type AmendmentStatus,
+  type AmendmentType,
   type Committee,
   type Delegate,
   type DebateState,
@@ -48,6 +51,21 @@ interface StoreValue {
   removeAttendanceSession: (committeeId: string, session: string) => void
   addMember: (committeeId: string, username: string) => Promise<Committee>
   removeMember: (committeeId: string, username: string) => Promise<Committee>
+  createAmendment: (committeeId: string, input: api.CreateAmendmentInput) => Promise<Committee>
+  updateAmendment: (
+    committeeId: string,
+    amendmentId: string,
+    patch: Partial<{
+      submitterId: string | null
+      type: AmendmentType
+      clauseRef: string
+      text: string
+      friendly: boolean
+      status: AmendmentStatus
+    }>,
+  ) => void
+  removeAmendment: (committeeId: string, amendmentId: string) => void
+  presentAmendment: (committeeId: string, amendmentId: string | null) => void
   /** Applies a live update pushed over the WebSocket from another chair's action. */
   applyRemoteUpdate: (committee: Committee) => void
   /** Removes a committee that was deleted by another chair, live. */
@@ -255,6 +273,66 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const committee = await api.removeMember(committeeId, username)
       replaceCommittee(committee)
       return committee
+    },
+    async createAmendment(committeeId, input) {
+      const committee = await api.createAmendment(committeeId, input)
+      replaceCommittee(committee)
+      return committee
+    },
+    updateAmendment(committeeId, amendmentId, patch) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                amendments: c.amendments.map((a) =>
+                  a.id === amendmentId ? { ...a, ...patch } : a,
+                ),
+              }
+            : c,
+        ),
+      )
+      api.updateAmendment(committeeId, amendmentId, patch).catch((err) => {
+        console.log("[mun-hub] failed to update amendment", err)
+        toast.error("Failed to save that amendment change.")
+        setCommittees(previous)
+      })
+    },
+    removeAmendment(committeeId, amendmentId) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                amendments: c.amendments.filter(
+                  (a) => a.id !== amendmentId && a.parentId !== amendmentId,
+                ),
+                presentedAmendmentId:
+                  c.presentedAmendmentId === amendmentId ? null : c.presentedAmendmentId,
+              }
+            : c,
+        ),
+      )
+      api.deleteAmendment(committeeId, amendmentId).catch((err) => {
+        console.log("[mun-hub] failed to delete amendment", err)
+        toast.error("Failed to delete that amendment.")
+        setCommittees(previous)
+      })
+    },
+    presentAmendment(committeeId, amendmentId) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId ? { ...c, presentedAmendmentId: amendmentId } : c,
+        ),
+      )
+      api.presentAmendment(committeeId, amendmentId).catch((err) => {
+        console.log("[mun-hub] failed to update presented amendment", err)
+        toast.error("Failed to update presentation.")
+        setCommittees(previous)
+      })
     },
     applyRemoteUpdate(committee) {
       replaceCommittee(committee)

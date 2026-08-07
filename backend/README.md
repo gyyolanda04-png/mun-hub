@@ -142,6 +142,10 @@ types. Accessing or modifying a committee you're not a member of returns
 | PATCH | `/api/committees/{id}/delegates/{delegateId}/attendance` | Set one delegate's attendance for one session — `{ "session": "Day 1", "present": true }`. 404s if `session` isn't one of the committee's `attendanceSessions` |
 | POST | `/api/committees/{id}/attendance-sessions` | Add a new attendance column — `{ "session": "Day 1" }`. No-op if it already exists |
 | DELETE | `/api/committees/{id}/attendance-sessions/{session}` | Remove an attendance column (URL-encode `session`) and clear it from every delegate |
+| POST | `/api/committees/{id}/amendments` | Create an amendment — `{ "submitterId", "type": "ADD"\|"STRIKE"\|"MODIFY", "clauseRef", "text", "friendly", "parentId" }`. `parentId` set = a second-degree amendment (amends another). Starts with status `PENDING` |
+| PATCH | `/api/committees/{id}/amendments/{amendmentId}` | Partially update an amendment — any of `type`, `clauseRef`, `text`, `friendly`, `status` (`PENDING`\|`APPROVED`\|`ENTERTAINING`\|`PASSED`\|`FAILED`), `submitterId`. Used for auto-save |
+| DELETE | `/api/committees/{id}/amendments/{amendmentId}` | Delete an amendment (and any second-degree amendments targeting it) |
+| POST | `/api/committees/{id}/present-amendment` | Set the amendment shown in Presentation Mode — `{ "amendmentId": string \| null }` (null clears it) |
 
 ### Example
 

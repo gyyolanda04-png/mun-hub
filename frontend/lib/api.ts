@@ -1,4 +1,11 @@
-import type { Committee, DebateState, Delegate } from "@/lib/types"
+import type {
+  Amendment,
+  AmendmentStatus,
+  AmendmentType,
+  Committee,
+  DebateState,
+  Delegate,
+} from "@/lib/types"
 import { clearToken, getToken } from "@/lib/auth-token"
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(/\/$/, "")
@@ -197,3 +204,56 @@ export function removeAttendanceSession(committeeId: string, session: string): P
     { method: "DELETE" },
   )
 }
+
+export interface CreateAmendmentInput {
+  submitterId: string | null
+  type: AmendmentType
+  clauseRef: string
+  text: string
+  friendly: boolean
+  parentId: string | null
+}
+
+export function createAmendment(committeeId: string, input: CreateAmendmentInput): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/amendments`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAmendment(
+  committeeId: string,
+  amendmentId: string,
+  patch: Partial<{
+    submitterId: string | null
+    type: AmendmentType
+    clauseRef: string
+    text: string
+    friendly: boolean
+    status: AmendmentStatus
+  }>,
+): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/amendments/${amendmentId}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  })
+}
+
+export function deleteAmendment(committeeId: string, amendmentId: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/amendments/${amendmentId}`, {
+    method: "DELETE",
+  })
+}
+
+export function presentAmendment(
+  committeeId: string,
+  amendmentId: string | null,
+): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/present-amendment`, {
+    method: "POST",
+    body: JSON.stringify({ amendmentId }),
+  })
+}
+
+/** Re-export so consumers can reference the Amendment type from the api module. */
+export type { Amendment }
