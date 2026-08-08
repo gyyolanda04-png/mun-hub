@@ -21,6 +21,7 @@ import {
 } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { SpeechTimer } from "@/components/presentation-timer"
 
 export function PresentationMode({
   committeeId,
@@ -177,6 +178,8 @@ export function PresentationMode({
               </p>
             ) : null}
           </div>
+
+          <SpeechTimer onExpire={advanceSpeaker} />
 
           <div className="w-full max-w-md">
             <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
