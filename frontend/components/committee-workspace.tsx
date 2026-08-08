@@ -134,12 +134,11 @@ export function CommitteeWorkspace({
                 </div>
                 <DelegateImport committeeId={committeeId} />
               </>
-            ) : (
-              <div className="flex justify-end">
-                <ImportDelegatesDialog committeeId={committeeId} />
-              </div>
-            )}
-            <AttendanceTracker committeeId={committeeId} />
+            ) : null}
+            <AttendanceTracker
+              committeeId={committeeId}
+              uploadSlot={<ImportDelegatesDialog committeeId={committeeId} />}
+            />
           </div>
         </TabsContent>
 
