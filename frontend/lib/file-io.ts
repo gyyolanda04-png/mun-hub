@@ -1,5 +1,16 @@
 import { read, utils, writeFile } from "xlsx"
 import type { Committee, Delegate } from "@/lib/types"
+import { AMENDMENT_TYPE_LABELS, AMENDMENT_STATUS_LABELS } from "@/lib/types"
+
+/** Per-delegate amendment stats derived from the amendment workspace. */
+export function amendmentStatsFor(committee: Committee, delegateId: string) {
+  const submitted = committee.amendments.filter((a) => a.submitterId === delegateId)
+  return {
+    approved: submitted.filter((a) => a.status === "APPROVED").length,
+    entertaining: submitted.filter((a) => a.status === "ENTERTAINING").length,
+    submitted,
+  }
+}
 
 export interface ParsedDelegate {
   delegation: string
@@ -137,17 +148,21 @@ export function exportCommittee(
   delegates?: Delegate[],
 ) {
   const list = delegates ?? committee.delegates
-  const data = list.map((d) => ({
-    Delegation: d.delegation,
-    "Delegate Name": d.name,
-    School: d.school,
-    Email: d.email,
-    Bloc: d.bloc,
-    "Total Speeches": d.speeches,
-    "Total Amendments": d.amendments,
-    "Total POIs": d.pois,
-    "Total Participation": d.speeches + d.amendments + d.pois,
-  }))
+  const data = list.map((d) => {
+    const s = amendmentStatsFor(committee, d.id)
+    return {
+      Delegation: d.delegation,
+      "Delegate Name": d.name,
+      School: d.school,
+      Email: d.email,
+      Bloc: d.bloc,
+      "Total Speeches": d.speeches,
+      "Approved Amendments": s.approved,
+      "Entertaining Amendments": s.entertaining,
+      "Total POIs": d.pois,
+      "Total Participation": d.speeches + s.approved + s.entertaining + d.pois,
+    }
+  })
 
   const worksheet = utils.json_to_sheet(data)
   const workbook = utils.book_new()
@@ -158,4 +173,96 @@ export function exportCommittee(
   writeFile(workbook, filename, {
     bookType: format === "csv" ? "csv" : "xlsx",
   })
+}
+
+function esc(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+/**
+ * Download a readable report document for one or more delegates: their
+ * participation stats plus every amendment they submitted (with status).
+ * Opens as a printable HTML file (Save as PDF from the browser).
+ */
+export function exportDelegateDocument(committee: Committee, delegates: Delegate[]) {
+  const sections = delegates
+    .map((d) => {
+      const s = amendmentStatsFor(committee, d.id)
+      const total = d.speeches + s.approved + s.entertaining + d.pois
+      const attendance = committee.attendanceSessions
+        .map((sess) => `${esc(sess)}: ${d.attendance[sess] ? "Present" : "Absent"}`)
+        .join(" &middot; ")
+      const amendments =
+        s.submitted.length === 0
+          ? "<p><em>No amendments submitted.</em></p>"
+          : s.submitted
+              .map(
+                (a) => `
+        <div class="amendment">
+          <div class="amendment-head">
+            <strong>${esc(AMENDMENT_TYPE_LABELS[a.type])}${a.clauseRef ? " " + esc(a.clauseRef) : ""}</strong>
+            <span class="status">${esc(AMENDMENT_STATUS_LABELS[a.status])}</span>
+            ${a.friendly ? "<span class='friendly'>Friendly</span>" : ""}
+            ${a.parentId ? "<span class='friendly'>2nd degree</span>" : ""}
+          </div>
+          <div>${esc(a.text)}</div>
+        </div>`,
+              )
+              .join("")
+      return `
+      <section>
+        <h2>${esc(d.delegation || "—")}</h2>
+        <p class="sub">${esc(d.name)}${d.school ? " &middot; " + esc(d.school) : ""}${
+          d.bloc ? " &middot; Bloc: " + esc(d.bloc) : ""
+        }${d.email ? " &middot; " + esc(d.email) : ""}</p>
+        <table class="stats">
+          <tr><th>Speeches</th><th>Approved amendments</th><th>Entertaining amendments</th><th>POIs</th><th>Total</th></tr>
+          <tr><td>${d.speeches}</td><td>${s.approved}</td><td>${s.entertaining}</td><td>${d.pois}</td><td>${total}</td></tr>
+        </table>
+        ${attendance ? `<p class="att"><strong>Attendance:</strong> ${attendance}</p>` : ""}
+        <h3>Amendments submitted (${s.submitted.length})</h3>
+        ${amendments}
+      </section>`
+    })
+    .join("<hr/>")
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(
+    committee.name,
+  )} — Delegate report</title><style>
+    body{font-family:Georgia,'Times New Roman',serif;max-width:820px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.5}
+    h1{font-size:22px;margin-bottom:24px}
+    h2{font-size:20px;margin-bottom:2px}
+    h3{font-size:15px;margin-top:18px;margin-bottom:6px}
+    .sub{color:#555;margin-top:0}
+    table.stats{border-collapse:collapse;margin:10px 0}
+    table.stats th,table.stats td{border:1px solid #ccc;padding:6px 14px;text-align:center;font-size:13px}
+    table.stats th{background:#f4f4f4}
+    .amendment{border:1px solid #e2e2e2;border-radius:6px;padding:10px 12px;margin:8px 0}
+    .amendment-head{margin-bottom:4px}
+    .status{font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:1px 7px;border-radius:10px;background:#eee;margin-left:6px}
+    .friendly{font-size:11px;color:#555;margin-left:6px}
+    .att{font-size:13px;color:#444}
+    hr{border:none;border-top:2px solid #111;margin:32px 0}
+    @media print{body{margin:0}}
+  </style></head><body>
+    <h1>${esc(committee.name)} — Delegate report</h1>
+    ${sections}
+  </body></html>`
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  const base =
+    delegates.length === 1
+      ? delegates[0].delegation || delegates[0].name || "delegate"
+      : `${committee.name || "committee"}-delegates`
+  link.download = `${base.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-report.html`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
