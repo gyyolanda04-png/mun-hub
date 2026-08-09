@@ -66,6 +66,9 @@ interface StoreValue {
   ) => void
   removeAmendment: (committeeId: string, amendmentId: string) => void
   presentAmendment: (committeeId: string, amendmentId: string | null) => void
+  createNote: (committeeId: string, text: string) => Promise<Committee>
+  updateNote: (committeeId: string, noteId: string, text: string) => void
+  removeNote: (committeeId: string, noteId: string) => void
   /** Applies a live update pushed over the WebSocket from another chair's action. */
   applyRemoteUpdate: (committee: Committee) => void
   /** Removes a committee that was deleted by another chair, live. */
@@ -331,6 +334,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       api.presentAmendment(committeeId, amendmentId).catch((err) => {
         console.log("[mun-hub] failed to update presented amendment", err)
         toast.error("Failed to update presentation.")
+        setCommittees(previous)
+      })
+    },
+    async createNote(committeeId, text) {
+      const committee = await api.createNote(committeeId, text)
+      replaceCommittee(committee)
+      return committee
+    },
+    updateNote(committeeId, noteId, text) {
+      const previous = committeesRef.current
+      const now = Date.now()
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                notes: c.notes.map((n) =>
+                  n.id === noteId ? { ...n, text, updatedAt: now } : n,
+                ),
+              }
+            : c,
+        ),
+      )
+      api.updateNote(committeeId, noteId, text).catch((err) => {
+        console.log("[mun-hub] failed to update note", err)
+        toast.error("Failed to save that note.")
+        setCommittees(previous)
+      })
+    },
+    removeNote(committeeId, noteId) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? { ...c, notes: c.notes.filter((n) => n.id !== noteId) }
+            : c,
+        ),
+      )
+      api.deleteNote(committeeId, noteId).catch((err) => {
+        console.log("[mun-hub] failed to delete note", err)
+        toast.error("Failed to delete that note.")
         setCommittees(previous)
       })
     },

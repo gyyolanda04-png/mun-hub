@@ -6,6 +6,7 @@ import com.munhub.backend.dto.DelegateInput;
 import com.munhub.backend.model.Amendment;
 import com.munhub.backend.model.AmendmentStatus;
 import com.munhub.backend.model.AmendmentType;
+import com.munhub.backend.model.Note;
 import com.munhub.backend.exception.NotFoundException;
 import com.munhub.backend.model.Committee;
 import com.munhub.backend.model.DebateStage;
@@ -369,6 +370,42 @@ public class CommitteeService {
       }
     }
     committee.setPresentedAmendmentId(amendmentId);
+    return saveAndBroadcast(committee);
+  }
+
+  // ---- Notes / event log (F5) ----
+
+  public Committee createNote(String committeeId, User currentUser, String text) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    Note note = new Note();
+    note.setId(UUID.randomUUID().toString());
+    note.setCommittee(committee);
+    note.setText(text == null ? "" : text);
+    long now = System.currentTimeMillis();
+    note.setCreatedAt(now);
+    note.setUpdatedAt(now);
+    committee.getNotes().add(note);
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee updateNote(String committeeId, User currentUser, String noteId, String text) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    Note note =
+        committee.getNotes().stream()
+            .filter(n -> n.getId().equals(noteId))
+            .findFirst()
+            .orElseThrow(() -> new NotFoundException("Note not found: " + noteId));
+    note.setText(text == null ? "" : text);
+    note.setUpdatedAt(System.currentTimeMillis());
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee deleteNote(String committeeId, User currentUser, String noteId) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    boolean removed = committee.getNotes().removeIf(n -> n.getId().equals(noteId));
+    if (!removed) {
+      throw new NotFoundException("Note not found: " + noteId);
+    }
     return saveAndBroadcast(committee);
   }
 

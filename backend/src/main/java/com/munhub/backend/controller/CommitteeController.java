@@ -180,4 +180,36 @@ public class CommitteeController {
     Committee committee = committeeService.presentAmendment(id, currentUser, amendmentId);
     return CommitteeResponse.from(committee);
   }
+
+  // ---- Notes / event log (F5) ----
+
+  @PostMapping("/{id}/notes")
+  public CommitteeResponse createNote(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @RequestBody Map<String, Object> body) {
+    String text = body.get("text") == null ? "" : String.valueOf(body.get("text"));
+    Committee committee = committeeService.createNote(id, currentUser, text);
+    return CommitteeResponse.from(committee);
+  }
+
+  @PatchMapping("/{id}/notes/{noteId}")
+  public CommitteeResponse updateNote(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String noteId,
+      @RequestBody Map<String, Object> body) {
+    String text = body.get("text") == null ? "" : String.valueOf(body.get("text"));
+    Committee committee = committeeService.updateNote(id, currentUser, noteId, text);
+    return CommitteeResponse.from(committee);
+  }
+
+  @DeleteMapping("/{id}/notes/{noteId}")
+  public CommitteeResponse deleteNote(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String noteId) {
+    Committee committee = committeeService.deleteNote(id, currentUser, noteId);
+    return CommitteeResponse.from(committee);
+  }
 }

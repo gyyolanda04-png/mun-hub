@@ -97,6 +97,14 @@ export interface Committee {
   amendments: Amendment[]
   /** Amendment currently shown in Presentation Mode (null = none). */
   presentedAmendmentId: string | null
+  notes: Note[]
+}
+
+export interface Note {
+  id: string
+  text: string
+  createdAt: number
+  updatedAt: number
 }
 
 export const STAGE_LABELS: Record<DebateStage, string> = {
