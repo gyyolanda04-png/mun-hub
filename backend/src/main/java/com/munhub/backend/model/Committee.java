@@ -37,6 +37,10 @@ public class Committee {
   @OrderColumn(name = "amendment_position")
   private List<Amendment> amendments = new ArrayList<>();
 
+  @OneToMany(mappedBy = "committee", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderColumn(name = "note_position")
+  private List<Note> notes = new ArrayList<>();
+
   /** The amendment currently pushed to Presentation Mode (null = none shown). */
   private String presentedAmendmentId;
 
@@ -96,6 +100,14 @@ public class Committee {
 
   public void setAmendments(List<Amendment> amendments) {
     this.amendments = amendments != null ? amendments : new ArrayList<>();
+  }
+
+  public List<Note> getNotes() {
+    return notes;
+  }
+
+  public void setNotes(List<Note> notes) {
+    this.notes = notes != null ? notes : new ArrayList<>();
   }
 
   public String getPresentedAmendmentId() {

@@ -255,5 +255,25 @@ export function presentAmendment(
   })
 }
 
+export function createNote(committeeId: string, text: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  })
+}
+
+export function updateNote(committeeId: string, noteId: string, text: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ text }),
+  })
+}
+
+export function deleteNote(committeeId: string, noteId: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/notes/${noteId}`, {
+    method: "DELETE",
+  })
+}
+
 /** Re-export so consumers can reference the Amendment type from the api module. */
 export type { Amendment }
