@@ -7,6 +7,7 @@ import {
   Monitor,
   MonitorX,
   CornerDownRight,
+  Search,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/lib/store"
@@ -24,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { DelegateCombobox } from "@/components/delegate-combobox"
 import {
   Select,
   SelectContent,
@@ -53,12 +55,42 @@ export function AmendmentsPanel({ committeeId }: { committeeId: string }) {
   const committee = getCommittee(committeeId)
   if (!committee) return null
 
+  return <AmendmentsPanelInner committeeId={committeeId} committee={committee} />
+}
+
+type SortKey = "recent" | "oldest" | "submitter" | "status"
+
+function AmendmentsPanelInner({
+  committeeId,
+  committee,
+}: {
+  committeeId: string
+  committee: NonNullable<ReturnType<ReturnType<typeof useStore>["getCommittee"]>>
+}) {
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<SortKey>("recent")
+
   const { amendments, delegates, presentedAmendmentId } = committee
   const topLevel = amendments.filter((a) => !a.parentId)
+  const q = search.trim().toLowerCase()
+  const displayed = topLevel
+    .filter(
+      (a) =>
+        !q ||
+        a.submitter.toLowerCase().includes(q) ||
+        a.text.toLowerCase().includes(q) ||
+        a.clauseRef.toLowerCase().includes(q),
+    )
+    .sort((a, b) => {
+      if (sort === "recent") return b.createdAt - a.createdAt
+      if (sort === "oldest") return a.createdAt - b.createdAt
+      if (sort === "submitter") return a.submitter.localeCompare(b.submitter)
+      return a.status.localeCompare(b.status)
+    })
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {amendments.length} amendment{amendments.length === 1 ? "" : "s"}
           {presentedAmendmentId ? " · 1 on screen" : ""}
@@ -66,13 +98,42 @@ export function AmendmentsPanel({ committeeId }: { committeeId: string }) {
         <CreateAmendmentDialog committeeId={committeeId} delegates={delegates} />
       </div>
 
+      {topLevel.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search by submitter, clause, or content…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort((v ?? "recent") as SortKey)}>
+            <SelectTrigger className="w-[180px]" aria-label="Sort amendments">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recently added</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="submitter">By submitter</SelectItem>
+              <SelectItem value="status">By status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
       {topLevel.length === 0 ? (
         <Card className="border-dashed py-14 text-center text-sm text-muted-foreground">
           No amendments yet. Create one to start tracking the debate.
         </Card>
+      ) : displayed.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No amendments match your search.
+        </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {topLevel.map((a) => (
+          {displayed.map((a) => (
             <AmendmentCard
               key={a.id}
               committeeId={committeeId}
@@ -141,23 +202,11 @@ function AmendmentCard({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">Submitter</Label>
-          <Select
-            value={amendment.submitterId ?? ""}
-            onValueChange={(v) =>
-              updateAmendment(committeeId, amendment.id, { submitterId: v || null })
-            }
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Choose delegate" />
-            </SelectTrigger>
-            <SelectContent>
-              {delegates.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.delegation}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DelegateCombobox
+            delegates={delegates}
+            value={amendment.submitterId}
+            onChange={(id) => updateAmendment(committeeId, amendment.id, { submitterId: id })}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">Type</Label>
@@ -371,18 +420,11 @@ function CreateAmendmentDialog({
         <div className="flex flex-col gap-4 py-2">
           <div className="flex flex-col gap-2">
             <Label>Submitted by</Label>
-            <Select value={submitterId} onValueChange={(v) => setSubmitterId(v ?? "")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose delegate" />
-              </SelectTrigger>
-              <SelectContent>
-                {delegates.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.delegation}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DelegateCombobox
+              delegates={delegates}
+              value={submitterId || null}
+              onChange={(id) => setSubmitterId(id ?? "")}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">

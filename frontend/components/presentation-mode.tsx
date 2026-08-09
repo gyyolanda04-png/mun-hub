@@ -163,6 +163,8 @@ export function PresentationMode({
             ) : null}
           </div>
 
+          <SpeechTimer onExpire={advanceSpeaker} />
+
           <div className="flex flex-col items-center gap-2">
             <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
               <Mic className="size-4" aria-hidden="true" />
@@ -178,8 +180,6 @@ export function PresentationMode({
               </p>
             ) : null}
           </div>
-
-          <SpeechTimer onExpire={advanceSpeaker} />
 
           <div className="w-full max-w-md">
             <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
