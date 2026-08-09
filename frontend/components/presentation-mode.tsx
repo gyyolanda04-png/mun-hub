@@ -19,6 +19,7 @@ import {
   type DebateStage,
   type Delegate,
 } from "@/lib/types"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SpeechTimer } from "@/components/presentation-timer"
@@ -30,10 +31,12 @@ export function PresentationMode({
   committeeId: string
   onExit: () => void
 }) {
-  const { getCommittee, updateDebate } = useStore()
+  const { getCommittee, updateDebate, incrementCounter } = useStore()
   const committee = getCommittee(committeeId)
   const [controlsOpen, setControlsOpen] = useState(true)
   const [queueSearch, setQueueSearch] = useState("")
+  const [poiQueue, setPoiQueue] = useState<string[]>([])
+  const [poiSearch, setPoiSearch] = useState("")
 
   const debate = committee?.debate
   const delegates = committee?.delegates ?? []
@@ -98,6 +101,35 @@ export function PresentationMode({
 
   const presentedAmendment =
     committee.amendments.find((a) => a.id === committee.presentedAmendmentId) ?? null
+
+  // ---- Speech + POI stat syncing (F8) ----
+  function recordSpeech() {
+    if (!debate.currentSpeakerId) return
+    incrementCounter(committeeId, debate.currentSpeakerId, "speeches", 1)
+    toast.success(`Speech counted for ${speaker?.delegation ?? "speaker"}.`)
+  }
+
+  const poiDelegates = poiQueue
+    .map((id) => delegates.find((d) => d.id === id))
+    .filter((d): d is Delegate => Boolean(d))
+  const availableForPoi = delegates.filter(
+    (d) => d.id !== debate.currentSpeakerId && !poiQueue.includes(d.id),
+  )
+
+  function addToPoiQueue(id: string) {
+    if (!id || poiQueue.includes(id)) return
+    setPoiQueue((q) => [...q, id])
+    setPoiSearch("")
+  }
+  function recordPoi(id: string) {
+    incrementCounter(committeeId, id, "pois", 1)
+    setPoiQueue((q) => q.filter((x) => x !== id))
+    const d = delegates.find((x) => x.id === id)
+    toast.success(`POI counted for ${d?.delegation ?? "delegate"}.`)
+  }
+  function removeFromPoiQueue(id: string) {
+    setPoiQueue((q) => q.filter((x) => x !== id))
+  }
 
   return (
     <div className="dark flex min-h-screen flex-col bg-background text-foreground">
@@ -178,6 +210,12 @@ export function PresentationMode({
                 {speaker.name}
                 {speaker.school ? ` · ${speaker.school}` : ""}
               </p>
+            ) : null}
+            {speaker ? (
+              <Button variant="outline" size="sm" className="mt-2" onClick={recordSpeech}>
+                <Mic className="size-4" />
+                Speech given (+1)
+              </Button>
             ) : null}
           </div>
 
@@ -335,6 +373,79 @@ export function PresentationMode({
                   Clear current speaker
                 </Button>
               ) : null}
+            </div>
+
+            {/* Points of Information — add delegates, then count each POI (F8) */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Points of Information
+              </h3>
+              <div className="flex flex-col gap-2">
+                <Input
+                  value={poiSearch}
+                  onChange={(e) => setPoiSearch(e.target.value)}
+                  placeholder="Search delegate to add…"
+                  aria-label="Search delegate to add to POI queue"
+                />
+                {(() => {
+                  const q = poiSearch.trim().toLowerCase()
+                  if (!q) return null
+                  const matches = availableForPoi.filter(
+                    (d) =>
+                      d.delegation.toLowerCase().includes(q) ||
+                      d.name.toLowerCase().includes(q),
+                  )
+                  if (matches.length === 0) {
+                    return (
+                      <p className="px-1 text-xs text-muted-foreground">No matching delegates.</p>
+                    )
+                  }
+                  return (
+                    <div className="max-h-40 overflow-auto rounded-md border border-border">
+                      {matches.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => addToPoiQueue(d.id)}
+                          className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                        >
+                          <span>{d.delegation}</span>
+                          <Plus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+              {poiDelegates.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">
+                  No one waiting. Add delegates who want to raise a POI.
+                </p>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {poiDelegates.map((d) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5"
+                    >
+                      <span className="truncate text-sm font-medium">{d.delegation}</span>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button size="sm" onClick={() => recordPoi(d.id)}>
+                          POI +1
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Remove ${d.delegation} from POI queue`}
+                          onClick={() => removeFromPoiQueue(d.id)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           </aside>
         ) : null}
