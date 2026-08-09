@@ -9,6 +9,7 @@ import {
   ListChecks,
   FileEdit,
   NotebookPen,
+  ChartColumn,
   UploadCloud,
   Users,
   UserPlus,
@@ -34,6 +35,7 @@ import { AttendanceTracker } from "@/components/attendance-tracker"
 import { ParticipationTracker } from "@/components/participation-tracker"
 import { AmendmentsPanel } from "@/components/amendments-panel"
 import { NotesPanel } from "@/components/notes-panel"
+import { BlocAnalytics } from "@/components/bloc-analytics"
 import { TimingCalculator } from "@/components/timing-calculator"
 
 export function CommitteeWorkspace({
@@ -118,6 +120,10 @@ export function CommitteeWorkspace({
             <NotebookPen className="size-4" />
             Notes
           </TabsTrigger>
+          <TabsTrigger value="blocs">
+            <ChartColumn className="size-4" />
+            Blocs
+          </TabsTrigger>
           <TabsTrigger value="timing">
             <Timer className="size-4" />
             Debate Timing
@@ -165,6 +171,10 @@ export function CommitteeWorkspace({
 
         <TabsContent value="notes" className="mt-6">
           <NotesPanel committeeId={committeeId} />
+        </TabsContent>
+
+        <TabsContent value="blocs" className="mt-6">
+          <BlocAnalytics committeeId={committeeId} />
         </TabsContent>
 
         <TabsContent value="timing" className="mt-6">
