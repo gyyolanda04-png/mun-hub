@@ -3,19 +3,21 @@
 import { useMemo, useState } from "react"
 import {
   Mic,
-  FileEdit,
   MessageCircleQuestion,
   Minus,
   Plus,
   Download,
+  FileDown,
   Filter,
   ArrowDownUp,
+  CircleCheck,
+  CircleDashed,
   Trash2,
   X,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
-import { exportCommittee } from "@/lib/file-io"
-import type { Delegate } from "@/lib/types"
+import { exportCommittee, exportDelegateDocument } from "@/lib/file-io"
+import type { Committee, Delegate } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,14 +35,18 @@ type SortKey = "delegation" | "name" | "speeches" | "amendments" | "pois"
 type SortDir = "asc" | "desc"
 
 const COUNTERS: {
-  field: "speeches" | "amendments" | "pois"
+  field: "speeches" | "pois"
   label: string
   icon: typeof Mic
 }[] = [
   { field: "speeches", label: "Speech", icon: Mic },
-  { field: "amendments", label: "Amendment", icon: FileEdit },
   { field: "pois", label: "POI", icon: MessageCircleQuestion },
 ]
+
+interface AmendmentCounts {
+  approved: number
+  entertaining: number
+}
 
 export function ParticipationTracker({
   committeeId,
@@ -56,14 +62,36 @@ export function ParticipationTracker({
   const [sortKey, setSortKey] = useState<SortKey>("delegation")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const delegates = committee?.delegates ?? []
+  const amendments = committee?.amendments ?? []
+
+  // Per-delegate approved/entertaining amendment counts, derived live from the
+  // amendment workspace (F2) — this is what "syncs" amendments to the delegate.
+  const counts = useMemo(() => {
+    const map = new Map<string, AmendmentCounts>()
+    for (const d of delegates) map.set(d.id, { approved: 0, entertaining: 0 })
+    for (const a of amendments) {
+      if (!a.submitterId) continue
+      const entry = map.get(a.submitterId)
+      if (!entry) continue
+      if (a.status === "APPROVED") entry.approved += 1
+      else if (a.status === "ENTERTAINING") entry.entertaining += 1
+    }
+    return map
+  }, [delegates, amendments])
+
+  const amdTotal = (id: string) => {
+    const c = counts.get(id)
+    return c ? c.approved + c.entertaining : 0
+  }
 
   const visible = useMemo(() => {
     const filtered = delegates.filter(
       (d) =>
         d.speeches >= minSpeeches &&
-        d.amendments >= minAmendments &&
+        amdTotal(d.id) >= minAmendments &&
         d.pois >= minPois &&
         (search.trim() === "" ||
           (d.delegation ?? "").toLowerCase().includes(search.trim().toLowerCase()) ||
@@ -74,15 +102,32 @@ export function ParticipationTracker({
       let cmp = 0
       if (sortKey === "delegation") cmp = (a.delegation ?? "").localeCompare(b.delegation ?? "")
       else if (sortKey === "name") cmp = a.name.localeCompare(b.name)
+      else if (sortKey === "amendments") cmp = amdTotal(a.id) - amdTotal(b.id)
       else cmp = a[sortKey] - b[sortKey]
       return sortDir === "asc" ? cmp : -cmp
     })
     return sorted
-  }, [delegates, minSpeeches, minAmendments, minPois, sortKey, sortDir, search])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delegates, minSpeeches, minAmendments, minPois, sortKey, sortDir, search, counts])
 
   if (!committee) return null
 
   const filtersActive = minSpeeches > 0 || minAmendments > 0 || minPois > 0
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function downloadSelected(committee: Committee) {
+    const chosen = delegates.filter((d) => selected.has(d.id))
+    if (chosen.length === 0) return
+    exportDelegateDocument(committee, chosen)
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -122,6 +167,12 @@ export function ParticipationTracker({
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            {selected.size > 0 ? (
+              <Button variant="outline" onClick={() => downloadSelected(committee)}>
+                <FileDown className="size-4" />
+                Download report ({selected.size})
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               onClick={() => exportCommittee(committee, "csv", visible)}
@@ -179,6 +230,10 @@ export function ParticipationTracker({
             <DelegateRow
               key={d.id}
               delegate={d}
+              counts={counts.get(d.id) ?? { approved: 0, entertaining: 0 }}
+              selected={selected.has(d.id)}
+              onToggleSelect={() => toggleSelect(d.id)}
+              onDownload={() => exportDelegateDocument(committee, [d])}
               onIncrement={(field, delta) =>
                 incrementCounter(committeeId, d.id, field, delta)
               }
@@ -219,25 +274,42 @@ function FilterField({
 
 function DelegateRow({
   delegate,
+  counts,
+  selected,
+  onToggleSelect,
+  onDownload,
   onIncrement,
   onRemove,
 }: {
   delegate: Delegate
-  onIncrement: (field: "speeches" | "amendments" | "pois", delta: number) => void
+  counts: AmendmentCounts
+  selected: boolean
+  onToggleSelect: () => void
+  onDownload: () => void
+  onIncrement: (field: "speeches" | "pois", delta: number) => void
   onRemove: () => void
 }) {
-  const total = delegate.speeches + delegate.amendments + delegate.pois
+  const total = delegate.speeches + counts.approved + counts.entertaining + delegate.pois
   return (
     <Card className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:gap-6">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">
-          {delegate.delegation || "—"}
-        </p>
-        <p className="truncate text-sm text-muted-foreground">
-          {delegate.name}
-          {delegate.school ? ` · ${delegate.school}` : ""}
-          {delegate.email ? ` · ${delegate.email}` : ""}
-        </p>
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          aria-label={`Select ${delegate.delegation} for download`}
+          className="mt-1"
+        />
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">
+            {delegate.delegation || "—"}
+          </p>
+          <p className="truncate text-sm text-muted-foreground">
+            {delegate.name}
+            {delegate.school ? ` · ${delegate.school}` : ""}
+            {delegate.email ? ` · ${delegate.email}` : ""}
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -276,6 +348,20 @@ function DelegateRow({
           </div>
         ))}
 
+        {/* Amendment stats are derived from the amendment workspace (read-only). */}
+        <DerivedStat
+          icon={CircleCheck}
+          label="Approved"
+          value={counts.approved}
+          title="Approved amendments submitted (from the Amendments tab)"
+        />
+        <DerivedStat
+          icon={CircleDashed}
+          label="Entertaining"
+          value={counts.entertaining}
+          title="Entertaining amendments submitted (from the Amendments tab)"
+        />
+
         <div className="flex flex-col items-center px-2">
           <span className="text-xs text-muted-foreground">Total</span>
           <span className="font-serif text-lg font-semibold tabular-nums text-primary">
@@ -286,6 +372,15 @@ function DelegateRow({
         <Button
           size="icon"
           variant="ghost"
+          aria-label={`Download ${delegate.delegation} report`}
+          title="Download this delegate's report"
+          onClick={onDownload}
+        >
+          <FileDown className="size-4 text-muted-foreground" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
           aria-label={`Remove ${delegate.delegation}`}
           onClick={onRemove}
         >
@@ -293,5 +388,32 @@ function DelegateRow({
         </Button>
       </div>
     </Card>
+  )
+}
+
+function DerivedStat({
+  icon: Icon,
+  label,
+  value,
+  title,
+}: {
+  icon: typeof Mic
+  label: string
+  value: number
+  title: string
+}) {
+  return (
+    <div
+      className="flex min-w-16 flex-col items-center rounded-md border border-dashed border-border px-2 py-1.5"
+      title={title}
+    >
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Icon className="size-3.5" aria-hidden="true" />
+        {label}
+      </span>
+      <span className="font-serif text-lg font-semibold tabular-nums text-foreground">
+        {value}
+      </span>
+    </div>
   )
 }
