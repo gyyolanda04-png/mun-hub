@@ -14,7 +14,8 @@ public record CommitteeResponse(
     List<String> members,
     List<AmendmentResponse> amendments,
     String presentedAmendmentId,
-    List<NoteResponse> notes) {
+    List<NoteResponse> notes,
+    List<String> blocs) {
 
   public static CommitteeResponse from(Committee c) {
     return new CommitteeResponse(
@@ -27,6 +28,7 @@ public record CommitteeResponse(
         c.getMembers().stream().map(User::getUsername).toList(),
         c.getAmendments().stream().map(AmendmentResponse::from).toList(),
         c.getPresentedAmendmentId(),
-        c.getNotes().stream().map(NoteResponse::from).toList());
+        c.getNotes().stream().map(NoteResponse::from).toList(),
+        c.getBlocs());
   }
 }

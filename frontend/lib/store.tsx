@@ -69,6 +69,9 @@ interface StoreValue {
   createNote: (committeeId: string, text: string) => Promise<Committee>
   updateNote: (committeeId: string, noteId: string, text: string) => void
   removeNote: (committeeId: string, noteId: string) => void
+  addBloc: (committeeId: string, bloc: string) => void
+  removeBloc: (committeeId: string, bloc: string) => void
+  setDelegateBloc: (committeeId: string, delegateId: string, bloc: string) => void
   /** Applies a live update pushed over the WebSocket from another chair's action. */
   applyRemoteUpdate: (committee: Committee) => void
   /** Removes a committee that was deleted by another chair, live. */
@@ -375,6 +378,65 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       api.deleteNote(committeeId, noteId).catch((err) => {
         console.log("[mun-hub] failed to delete note", err)
         toast.error("Failed to delete that note.")
+        setCommittees(previous)
+      })
+    },
+    addBloc(committeeId, bloc) {
+      const previous = committeesRef.current
+      const trimmed = bloc.trim()
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId && trimmed && !c.blocs.includes(trimmed)
+            ? { ...c, blocs: [...c.blocs, trimmed] }
+            : c,
+        ),
+      )
+      api.addBloc(committeeId, trimmed).catch((err) => {
+        console.log("[mun-hub] failed to add bloc", err)
+        toast.error("Failed to add that bloc.")
+        setCommittees(previous)
+      })
+    },
+    removeBloc(committeeId, bloc) {
+      const previous = committeesRef.current
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                blocs: c.blocs.filter((b) => b !== bloc),
+                delegates: c.delegates.map((d) =>
+                  d.bloc === bloc ? { ...d, bloc: "" } : d,
+                ),
+              }
+            : c,
+        ),
+      )
+      api.removeBloc(committeeId, bloc).catch((err) => {
+        console.log("[mun-hub] failed to remove bloc", err)
+        toast.error("Failed to remove that bloc.")
+        setCommittees(previous)
+      })
+    },
+    setDelegateBloc(committeeId, delegateId, bloc) {
+      const previous = committeesRef.current
+      const trimmed = bloc.trim()
+      setCommittees((prev) =>
+        prev.map((c) =>
+          c.id === committeeId
+            ? {
+                ...c,
+                blocs: trimmed && !c.blocs.includes(trimmed) ? [...c.blocs, trimmed] : c.blocs,
+                delegates: c.delegates.map((d) =>
+                  d.id === delegateId ? { ...d, bloc: trimmed } : d,
+                ),
+              }
+            : c,
+        ),
+      )
+      api.setDelegateBloc(committeeId, delegateId, trimmed).catch((err) => {
+        console.log("[mun-hub] failed to set delegate bloc", err)
+        toast.error("Failed to update that delegate's bloc.")
         setCommittees(previous)
       })
     },

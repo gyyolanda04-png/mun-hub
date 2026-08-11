@@ -146,7 +146,11 @@ public class CommitteeService {
       delegate.setName(input.name());
       delegate.setSchool(input.school() == null ? "" : input.school());
       delegate.setEmail(input.email() == null ? "" : input.email());
-      delegate.setBloc(input.bloc() == null ? "" : input.bloc().trim());
+      String blocName = input.bloc() == null ? "" : input.bloc().trim();
+      delegate.setBloc(blocName);
+      if (!blocName.isEmpty() && !committee.getBlocs().contains(blocName)) {
+        committee.getBlocs().add(blocName);
+      }
       delegate.setSpeeches(0);
       delegate.setAmendments(0);
       delegate.setPois(0);
@@ -370,6 +374,46 @@ public class CommitteeService {
       }
     }
     committee.setPresentedAmendmentId(amendmentId);
+    return saveAndBroadcast(committee);
+  }
+
+  // ---- Blocs (chair-managed) ----
+
+  public Committee addBloc(String committeeId, User currentUser, String bloc) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    String trimmed = bloc == null ? "" : bloc.trim();
+    if (!trimmed.isEmpty() && !committee.getBlocs().contains(trimmed)) {
+      committee.getBlocs().add(trimmed);
+    }
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee removeBloc(String committeeId, User currentUser, String bloc) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    String trimmed = bloc.trim();
+    committee.getBlocs().removeIf(b -> b.equals(trimmed));
+    // Unassign any delegates that were in this bloc.
+    for (Delegate d : committee.getDelegates()) {
+      if (trimmed.equals(d.getBloc())) {
+        d.setBloc("");
+      }
+    }
+    return saveAndBroadcast(committee);
+  }
+
+  public Committee setDelegateBloc(
+      String committeeId, User currentUser, String delegateId, String bloc) {
+    Committee committee = getCommittee(committeeId, currentUser);
+    Delegate delegate =
+        committee.getDelegates().stream()
+            .filter(d -> d.getId().equals(delegateId))
+            .findFirst()
+            .orElseThrow(() -> new NotFoundException("Delegate not found: " + delegateId));
+    String trimmed = bloc == null ? "" : bloc.trim();
+    delegate.setBloc(trimmed);
+    if (!trimmed.isEmpty() && !committee.getBlocs().contains(trimmed)) {
+      committee.getBlocs().add(trimmed);
+    }
     return saveAndBroadcast(committee);
   }
 
