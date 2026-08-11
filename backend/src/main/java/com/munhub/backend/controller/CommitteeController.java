@@ -181,6 +181,38 @@ public class CommitteeController {
     return CommitteeResponse.from(committee);
   }
 
+  // ---- Blocs (chair-managed) ----
+
+  @PostMapping("/{id}/blocs")
+  public CommitteeResponse addBloc(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @RequestBody Map<String, Object> body) {
+    String bloc = body.get("bloc") == null ? "" : String.valueOf(body.get("bloc"));
+    Committee committee = committeeService.addBloc(id, currentUser, bloc);
+    return CommitteeResponse.from(committee);
+  }
+
+  @DeleteMapping("/{id}/blocs/{bloc}")
+  public CommitteeResponse removeBloc(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String bloc) {
+    Committee committee = committeeService.removeBloc(id, currentUser, bloc);
+    return CommitteeResponse.from(committee);
+  }
+
+  @PatchMapping("/{id}/delegates/{delegateId}/bloc")
+  public CommitteeResponse setDelegateBloc(
+      @AuthenticationPrincipal User currentUser,
+      @PathVariable String id,
+      @PathVariable String delegateId,
+      @RequestBody Map<String, Object> body) {
+    String bloc = body.get("bloc") == null ? "" : String.valueOf(body.get("bloc"));
+    Committee committee = committeeService.setDelegateBloc(id, currentUser, delegateId, bloc);
+    return CommitteeResponse.from(committee);
+  }
+
   // ---- Notes / event log (F5) ----
 
   @PostMapping("/{id}/notes")

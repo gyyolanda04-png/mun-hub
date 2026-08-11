@@ -54,6 +54,13 @@ public class Committee {
   @Column(name = "session")
   private List<String> attendanceSessions = new ArrayList<>();
 
+  /** Chair-defined bloc names, e.g. ["Western Bloc", "African Union"]. */
+  @ElementCollection
+  @CollectionTable(name = "committee_blocs", joinColumns = @JoinColumn(name = "committee_id"))
+  @OrderColumn(name = "bloc_position")
+  @Column(name = "bloc")
+  private List<String> blocs = new ArrayList<>();
+
   /** Chairs who can see and edit this committee. Insertion order = creator first. */
   @ManyToMany
   @JoinTable(
@@ -132,6 +139,14 @@ public class Committee {
 
   public void setAttendanceSessions(List<String> attendanceSessions) {
     this.attendanceSessions = attendanceSessions != null ? attendanceSessions : new ArrayList<>();
+  }
+
+  public List<String> getBlocs() {
+    return blocs;
+  }
+
+  public void setBlocs(List<String> blocs) {
+    this.blocs = blocs != null ? blocs : new ArrayList<>();
   }
 
   public Set<User> getMembers() {

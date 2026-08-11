@@ -98,6 +98,8 @@ export interface Committee {
   /** Amendment currently shown in Presentation Mode (null = none). */
   presentedAmendmentId: string | null
   notes: Note[]
+  /** Chair-defined bloc names. */
+  blocs: string[]
 }
 
 export interface Note {

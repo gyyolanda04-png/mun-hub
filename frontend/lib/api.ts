@@ -255,6 +255,30 @@ export function presentAmendment(
   })
 }
 
+export function addBloc(committeeId: string, bloc: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/blocs`, {
+    method: "POST",
+    body: JSON.stringify({ bloc }),
+  })
+}
+
+export function removeBloc(committeeId: string, bloc: string): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/blocs/${encodeURIComponent(bloc)}`, {
+    method: "DELETE",
+  })
+}
+
+export function setDelegateBloc(
+  committeeId: string,
+  delegateId: string,
+  bloc: string,
+): Promise<Committee> {
+  return request<Committee>(`/api/committees/${committeeId}/delegates/${delegateId}/bloc`, {
+    method: "PATCH",
+    body: JSON.stringify({ bloc }),
+  })
+}
+
 export function createNote(committeeId: string, text: string): Promise<Committee> {
   return request<Committee>(`/api/committees/${committeeId}/notes`, {
     method: "POST",
