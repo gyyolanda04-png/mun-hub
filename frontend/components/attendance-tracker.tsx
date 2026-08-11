@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useState } from "react"
 import { Check, Plus, X } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -22,16 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { AddDelegateDialog } from "@/components/add-delegate-dialog"
 import { toast } from "sonner"
 
-export function AttendanceTracker({
-  committeeId,
-  uploadSlot,
-}: {
-  committeeId: string
-  uploadSlot?: ReactNode
-}) {
+export function AttendanceTracker({ committeeId }: { committeeId: string }) {
   const { getCommittee, setAttendance, addAttendanceSession, removeAttendanceSession } =
     useStore()
   const committee = getCommittee(committeeId)
@@ -58,11 +51,6 @@ export function AttendanceTracker({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        <AddDelegateDialog committeeId={committeeId} />
-        {delegates.length > 0 ? uploadSlot : null}
-      </div>
-
       <MajorityInfo delegates={delegates} attendanceSessions={attendanceSessions} />
 
       {delegates.length === 0 ? (

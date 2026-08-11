@@ -31,6 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { DelegateImport } from "@/components/delegate-import"
+import { AddDelegateDialog } from "@/components/add-delegate-dialog"
 import { AttendanceTracker } from "@/components/attendance-tracker"
 import { ParticipationTracker } from "@/components/participation-tracker"
 import { AmendmentsPanel } from "@/components/amendments-panel"
@@ -103,32 +104,39 @@ export function CommitteeWorkspace({
       </div>
 
       <Tabs defaultValue="attendance" className="w-full">
-        <TabsList>
-          <TabsTrigger value="attendance">
-            <CalendarCheck className="size-4" />
-            Attendance
-          </TabsTrigger>
-          <TabsTrigger value="participation">
-            <ListChecks className="size-4" />
-            Participation
-          </TabsTrigger>
-          <TabsTrigger value="amendments">
-            <FileEdit className="size-4" />
-            Amendments
-          </TabsTrigger>
-          <TabsTrigger value="notes">
-            <NotebookPen className="size-4" />
-            Notes
-          </TabsTrigger>
-          <TabsTrigger value="blocs">
-            <ChartColumn className="size-4" />
-            Blocs
-          </TabsTrigger>
-          <TabsTrigger value="timing">
-            <Timer className="size-4" />
-            Debate Timing
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="attendance">
+              <CalendarCheck className="size-4" />
+              Attendance
+            </TabsTrigger>
+            <TabsTrigger value="participation">
+              <ListChecks className="size-4" />
+              Participation
+            </TabsTrigger>
+            <TabsTrigger value="amendments">
+              <FileEdit className="size-4" />
+              Amendments
+            </TabsTrigger>
+            <TabsTrigger value="blocs">
+              <ChartColumn className="size-4" />
+              Blocs
+            </TabsTrigger>
+            <TabsTrigger value="notes">
+              <NotebookPen className="size-4" />
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="timing">
+              <Timer className="size-4" />
+              Debate Timing
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center gap-2">
+            <AddDelegateDialog committeeId={committeeId} />
+            <ImportDelegatesDialog committeeId={committeeId} />
+          </div>
+        </div>
 
         <TabsContent value="attendance" className="mt-6">
           <div className="flex flex-col gap-4">
@@ -147,10 +155,7 @@ export function CommitteeWorkspace({
                 <DelegateImport committeeId={committeeId} />
               </>
             ) : null}
-            <AttendanceTracker
-              committeeId={committeeId}
-              uploadSlot={<ImportDelegatesDialog committeeId={committeeId} />}
-            />
+            <AttendanceTracker committeeId={committeeId} />
           </div>
         </TabsContent>
 
