@@ -7,8 +7,6 @@ import {
   ChevronRight,
   Mic,
   UserCheck,
-  SkipForward,
-  Plus,
   ListOrdered,
   SlidersHorizontal,
 } from "lucide-react"
@@ -20,10 +18,9 @@ import {
   type DebateStage,
   type Delegate,
 } from "@/lib/types"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { SpeechTimer } from "@/components/presentation-timer"
+import { DelegateCombobox } from "@/components/delegate-combobox"
 
 export function PresentationMode({
   committeeId,
@@ -32,12 +29,9 @@ export function PresentationMode({
   committeeId: string
   onExit: () => void
 }) {
-  const { getCommittee, updateDebate, incrementCounter } = useStore()
+  const { getCommittee, updateDebate } = useStore()
   const committee = getCommittee(committeeId)
   const [controlsOpen, setControlsOpen] = useState(true)
-  const [queueSearch, setQueueSearch] = useState("")
-  const [poiQueue, setPoiQueue] = useState<string[]>([])
-  const [poiSearch, setPoiSearch] = useState("")
 
   const debate = committee?.debate
   const delegates = committee?.delegates ?? []
@@ -45,6 +39,13 @@ export function PresentationMode({
   const speaker = useMemo(
     () => delegates.find((d) => d.id === debate?.currentSpeakerId) ?? null,
     [delegates, debate?.currentSpeakerId],
+  )
+  const queue = useMemo(
+    () =>
+      (debate?.speakerQueue ?? [])
+        .map((id) => delegates.find((d) => d.id === id))
+        .filter((d): d is Delegate => Boolean(d)),
+    [debate?.speakerQueue, delegates],
   )
   if (!committee || !debate) {
     return (
@@ -71,51 +72,28 @@ export function PresentationMode({
     updateDebate(committeeId, { stage: STAGE_ORDER[next] })
   }
 
-  function setCurrentSpeaker(id: string) {
-    updateDebate(committeeId, { currentSpeakerId: id })
-    setQueueSearch("")
+  function advanceSpeaker() {
+    const [next, ...rest] = debate.speakerQueue
+    updateDebate(committeeId, {
+      currentSpeakerId: next ?? null,
+      speakerQueue: rest,
+    })
   }
 
-  // THIMUN has no speakers' list: "Next speaker" counts the current speaker's
-  // speech and clears the floor; "Skip" clears it without counting.
-  function nextSpeaker() {
-    if (!debate.currentSpeakerId) return
-    incrementCounter(committeeId, debate.currentSpeakerId, "speeches", 1)
-    toast.success(`Speech counted for ${speaker?.delegation ?? "speaker"}.`)
-    updateDebate(committeeId, { currentSpeakerId: null })
+  function addToQueue(id: string) {
+    if (!id) return
+    if (debate.speakerQueue.includes(id) || debate.currentSpeakerId === id) return
+    updateDebate(committeeId, {
+      speakerQueue: [...debate.speakerQueue, id],
+    })
   }
 
-  function skipSpeaker() {
-    updateDebate(committeeId, { currentSpeakerId: null })
-  }
-
-  const availableForSpeaker = delegates.filter((d) => d.id !== debate.currentSpeakerId)
+  const availableForQueue = delegates.filter(
+    (d) => d.id !== debate.currentSpeakerId && !debate.speakerQueue.includes(d.id),
+  )
 
   const presentedAmendment =
     committee.amendments.find((a) => a.id === committee.presentedAmendmentId) ?? null
-
-  // ---- POI queue + stat syncing (F8) ----
-  const poiDelegates = poiQueue
-    .map((id) => delegates.find((d) => d.id === id))
-    .filter((d): d is Delegate => Boolean(d))
-  const availableForPoi = delegates.filter(
-    (d) => d.id !== debate.currentSpeakerId && !poiQueue.includes(d.id),
-  )
-
-  function addToPoiQueue(id: string) {
-    if (!id || poiQueue.includes(id)) return
-    setPoiQueue((q) => [...q, id])
-    setPoiSearch("")
-  }
-  function recordPoi(id: string) {
-    incrementCounter(committeeId, id, "pois", 1)
-    setPoiQueue((q) => q.filter((x) => x !== id))
-    const d = delegates.find((x) => x.id === id)
-    toast.success(`POI counted for ${d?.delegation ?? "delegate"}.`)
-  }
-  function removeFromPoiQueue(id: string) {
-    setPoiQueue((q) => q.filter((x) => x !== id))
-  }
 
   return (
     <div className="dark flex min-h-screen flex-col bg-background text-foreground">
@@ -181,7 +159,7 @@ export function PresentationMode({
             ) : null}
           </div>
 
-          <SpeechTimer onExpire={nextSpeaker} />
+          <SpeechTimer onExpire={advanceSpeaker} />
 
           <div className="flex flex-col items-center gap-2">
             <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
@@ -204,11 +182,11 @@ export function PresentationMode({
               <ListOrdered className="size-4" aria-hidden="true" />
               Points of Information
             </span>
-            {poiDelegates.length === 0 ? (
+            {queue.length === 0 ? (
               <p className="mt-3 text-muted-foreground">No points of information</p>
             ) : (
               <ol className="mt-3 flex flex-col gap-2">
-                {poiDelegates.map((d, i) => (
+                {queue.map((d, i) => (
                   <li
                     key={d.id}
                     className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2 text-left"
@@ -285,139 +263,28 @@ export function PresentationMode({
 
             <div className="flex flex-col gap-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Speaker
-              </h3>
-              {speaker ? (
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={nextSpeaker}>
-                    <UserCheck className="size-4" />
-                    Next speaker (+1)
-                  </Button>
-                  <Button variant="outline" onClick={skipSpeaker}>
-                    <SkipForward className="size-4" />
-                    Skip
-                  </Button>
-                </div>
-              ) : null}
-              <div className="flex flex-col gap-2">
-                <Input
-                  value={queueSearch}
-                  onChange={(e) => setQueueSearch(e.target.value)}
-                  placeholder="Search to set current speaker…"
-                  aria-label="Search to set current speaker"
-                />
-                {(() => {
-                  const q = queueSearch.trim().toLowerCase()
-                  if (!q) return null
-                  const matches = availableForSpeaker.filter(
-                    (d) =>
-                      d.delegation.toLowerCase().includes(q) ||
-                      d.name.toLowerCase().includes(q),
-                  )
-                  if (matches.length === 0) {
-                    return (
-                      <p className="px-1 text-xs text-muted-foreground">
-                        No matching delegates.
-                      </p>
-                    )
-                  }
-                  return (
-                    <div className="max-h-44 overflow-auto rounded-md border border-border">
-                      {matches.map((d) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => setCurrentSpeaker(d.id)}
-                          className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-secondary"
-                        >
-                          <span>
-                            {d.delegation}
-                            {d.name ? (
-                              <span className="ml-2 text-xs text-muted-foreground">
-                                {d.name}
-                              </span>
-                            ) : null}
-                          </span>
-                          <UserCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-
-            {/* Points of Information — add delegates, then count each POI (F8) */}
-            <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Points of Information
               </h3>
-              <div className="flex flex-col gap-2">
-                <Input
-                  value={poiSearch}
-                  onChange={(e) => setPoiSearch(e.target.value)}
-                  placeholder="Search delegate to add…"
-                  aria-label="Search delegate to add to POI queue"
-                />
-                {(() => {
-                  const q = poiSearch.trim().toLowerCase()
-                  if (!q) return null
-                  const matches = availableForPoi.filter(
-                    (d) =>
-                      d.delegation.toLowerCase().includes(q) ||
-                      d.name.toLowerCase().includes(q),
-                  )
-                  if (matches.length === 0) {
-                    return (
-                      <p className="px-1 text-xs text-muted-foreground">No matching delegates.</p>
-                    )
-                  }
-                  return (
-                    <div className="max-h-40 overflow-auto rounded-md border border-border">
-                      {matches.map((d) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => addToPoiQueue(d.id)}
-                          className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-secondary"
-                        >
-                          <span>{d.delegation}</span>
-                          <Plus className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })()}
-              </div>
-              {poiDelegates.length === 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">
-                  No one waiting. Add delegates who want to raise a POI.
-                </p>
-              ) : (
-                <ol className="flex flex-col gap-2">
-                  {poiDelegates.map((d) => (
-                    <li
-                      key={d.id}
-                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5"
-                    >
-                      <span className="truncate text-sm font-medium">{d.delegation}</span>
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button size="sm" onClick={() => recordPoi(d.id)}>
-                          POI +1
-                        </Button>
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label={`Remove ${d.delegation} from POI queue`}
-                          onClick={() => removeFromPoiQueue(d.id)}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
+              <Button onClick={advanceSpeaker} disabled={queue.length === 0}>
+                <UserCheck className="size-4" />
+                Next from queue
+              </Button>
+              <DelegateCombobox
+                delegates={availableForQueue}
+                value={null}
+                onChange={(id) => {
+                  if (id) addToQueue(id)
+                }}
+                placeholder="Add delegate to queue…"
+              />
+              {speaker ? (
+                <Button
+                  variant="outline"
+                  onClick={() => updateDebate(committeeId, { currentSpeakerId: null })}
+                >
+                  Clear current speaker
+                </Button>
+              ) : null}
             </div>
           </aside>
         ) : null}
