@@ -159,11 +159,13 @@ export function PresentationMode({
             ) : null}
           </div>
 
-          <SpeechTimer onExpire={advanceSpeaker} />
+          <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:gap-16">
+            <div className="flex flex-col items-center gap-6">
+              <SpeechTimer onExpire={advanceSpeaker} />
 
-          <div className="flex flex-col items-center gap-2">
-            <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
-              <Mic className="size-4" aria-hidden="true" />
+              <div className="flex flex-col items-center gap-2">
+                <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
+                  <Mic className="size-4" aria-hidden="true" />
               Current Speaker
             </span>
             <p className="font-serif text-5xl font-semibold text-balance md:text-7xl">
@@ -175,9 +177,10 @@ export function PresentationMode({
                 {speaker.school ? ` · ${speaker.school}` : ""}
               </p>
             ) : null}
-          </div>
+              </div>
+            </div>
 
-          <div className="w-full max-w-md">
+            <div className="w-full max-w-md">
             <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
               <ListOrdered className="size-4" aria-hidden="true" />
               Points of Information
@@ -202,6 +205,7 @@ export function PresentationMode({
                 ))}
               </ol>
             )}
+            </div>
           </div>
         </div>
 
