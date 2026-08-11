@@ -131,7 +131,7 @@ function NoteItem({ committeeId, note }: { committeeId: string; note: Note }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onBlur={save}
-            className="min-h-[48px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+            className="min-h-[140px] w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         ) : (
           <p
