@@ -8,6 +8,7 @@ import {
   Mic,
   UserCheck,
   ListOrdered,
+  Plus,
   SlidersHorizontal,
 } from "lucide-react"
 import { useStore } from "@/lib/store"
@@ -15,9 +16,9 @@ import {
   STAGE_LABELS,
   STAGE_ORDER,
   AMENDMENT_TYPE_LABELS,
-  type DebateStage,
   type Delegate,
 } from "@/lib/types"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { SpeechTimer } from "@/components/presentation-timer"
 import { DelegateCombobox } from "@/components/delegate-combobox"
@@ -29,9 +30,12 @@ export function PresentationMode({
   committeeId: string
   onExit: () => void
 }) {
-  const { getCommittee, updateDebate } = useStore()
+  const { getCommittee, updateDebate, incrementCounter } = useStore()
   const committee = getCommittee(committeeId)
   const [controlsOpen, setControlsOpen] = useState(true)
+  // POI queue is presentation-local: delegates lined up to make a point of
+  // information on the current speech. Each "+1" logs a POI and drops them.
+  const [poiQueue, setPoiQueue] = useState<string[]>([])
 
   const debate = committee?.debate
   const delegates = committee?.delegates ?? []
@@ -40,12 +44,19 @@ export function PresentationMode({
     () => delegates.find((d) => d.id === debate?.currentSpeakerId) ?? null,
     [delegates, debate?.currentSpeakerId],
   )
-  const queue = useMemo(
+  const speakerList = useMemo(
     () =>
       (debate?.speakerQueue ?? [])
         .map((id) => delegates.find((d) => d.id === id))
         .filter((d): d is Delegate => Boolean(d)),
     [debate?.speakerQueue, delegates],
+  )
+  const poiList = useMemo(
+    () =>
+      poiQueue
+        .map((id) => delegates.find((d) => d.id === id))
+        .filter((d): d is Delegate => Boolean(d)),
+    [poiQueue, delegates],
   )
   if (!committee || !debate) {
     return (
@@ -72,15 +83,21 @@ export function PresentationMode({
     updateDebate(committeeId, { stage: STAGE_ORDER[next] })
   }
 
-  function advanceSpeaker() {
+  // Move to the next speaker. The outgoing speaker just finished their speech,
+  // so count it, then promote the front of the queue.
+  function nextSpeaker() {
+    const outgoing = debate.currentSpeakerId
+    if (outgoing) incrementCounter(committeeId, outgoing, "speeches", 1)
     const [next, ...rest] = debate.speakerQueue
     updateDebate(committeeId, {
       currentSpeakerId: next ?? null,
       speakerQueue: rest,
     })
+    // A new speech means a fresh set of points of information.
+    setPoiQueue([])
   }
 
-  function addToQueue(id: string) {
+  function addSpeaker(id: string) {
     if (!id) return
     if (debate.speakerQueue.includes(id) || debate.currentSpeakerId === id) return
     updateDebate(committeeId, {
@@ -88,8 +105,35 @@ export function PresentationMode({
     })
   }
 
-  const availableForQueue = delegates.filter(
+  function removeSpeaker(id: string) {
+    updateDebate(committeeId, {
+      speakerQueue: debate.speakerQueue.filter((x) => x !== id),
+    })
+  }
+
+  const availableSpeakers = delegates.filter(
     (d) => d.id !== debate.currentSpeakerId && !debate.speakerQueue.includes(d.id),
+  )
+
+  function addPoi(id: string) {
+    if (!id) return
+    setPoiQueue((prev) => (prev.includes(id) ? prev : [...prev, id]))
+  }
+
+  // A queued delegate got to make their point: log the POI and remove them.
+  function recordPoi(id: string) {
+    incrementCounter(committeeId, id, "pois", 1)
+    setPoiQueue((prev) => prev.filter((x) => x !== id))
+    const d = delegates.find((x) => x.id === id)
+    toast.success(`Point of information recorded${d ? ` · ${d.delegation}` : ""}`)
+  }
+
+  function removePoi(id: string) {
+    setPoiQueue((prev) => prev.filter((x) => x !== id))
+  }
+
+  const availableForPoi = delegates.filter(
+    (d) => d.id !== debate.currentSpeakerId && !poiQueue.includes(d.id),
   )
 
   const presentedAmendment =
@@ -159,52 +203,52 @@ export function PresentationMode({
             ) : null}
           </div>
 
-          <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:gap-16">
+          <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:items-start lg:gap-16">
             <div className="flex flex-col items-center gap-6">
-              <SpeechTimer onExpire={advanceSpeaker} />
+              <SpeechTimer onExpire={nextSpeaker} />
 
               <div className="flex flex-col items-center gap-2">
                 <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
                   <Mic className="size-4" aria-hidden="true" />
-              Current Speaker
-            </span>
-            <p className="font-serif text-5xl font-semibold text-balance md:text-7xl">
-              {speaker ? speaker.delegation : "—"}
-            </p>
-            {speaker ? (
-              <p className="text-xl text-muted-foreground">
-                {speaker.name}
-                {speaker.school ? ` · ${speaker.school}` : ""}
-              </p>
-            ) : null}
+                  Current Speaker
+                </span>
+                <p className="font-serif text-5xl font-semibold text-balance md:text-7xl">
+                  {speaker ? speaker.delegation : "—"}
+                </p>
+                {speaker ? (
+                  <p className="text-xl text-muted-foreground">
+                    {speaker.name}
+                    {speaker.school ? ` · ${speaker.school}` : ""}
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <div className="w-full max-w-md">
-            <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
-              <ListOrdered className="size-4" aria-hidden="true" />
-              Points of Information
-            </span>
-            {queue.length === 0 ? (
-              <p className="mt-3 text-muted-foreground">No points of information</p>
-            ) : (
-              <ol className="mt-3 flex flex-col gap-2">
-                {queue.map((d, i) => (
-                  <li
-                    key={d.id}
-                    className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2 text-left"
-                  >
-                    <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-sm font-semibold tabular-nums text-secondary-foreground">
-                      {i + 1}
-                    </span>
-                    <span className="truncate font-medium">{d.delegation}</span>
-                    <span className="ml-auto truncate text-sm text-muted-foreground">
-                      {d.name}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
+              <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground">
+                <ListOrdered className="size-4" aria-hidden="true" />
+                Points of Information
+              </span>
+              {poiList.length === 0 ? (
+                <p className="mt-3 text-muted-foreground">No points of information</p>
+              ) : (
+                <ol className="mt-3 flex flex-col gap-2">
+                  {poiList.map((d, i) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2 text-left"
+                    >
+                      <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-sm font-semibold tabular-nums text-secondary-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="truncate font-medium">{d.delegation}</span>
+                      <span className="ml-auto truncate text-sm text-muted-foreground">
+                        {d.name}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           </div>
         </div>
@@ -265,22 +309,52 @@ export function PresentationMode({
               />
             ) : null}
 
+            {/* Speakers: advancing counts the outgoing speaker's speech. */}
             <div className="flex flex-col gap-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Points of Information
+                Speakers
               </h3>
-              <Button onClick={advanceSpeaker} disabled={queue.length === 0}>
+              <Button
+                onClick={nextSpeaker}
+                disabled={!speaker && debate.speakerQueue.length === 0}
+              >
                 <UserCheck className="size-4" />
-                Next from queue
+                Next speaker (+1 speech)
               </Button>
               <DelegateCombobox
-                delegates={availableForQueue}
+                delegates={availableSpeakers}
                 value={null}
                 onChange={(id) => {
-                  if (id) addToQueue(id)
+                  if (id) addSpeaker(id)
                 }}
-                placeholder="Add delegate to queue…"
+                placeholder="Add delegate to speakers…"
               />
+              {speakerList.length > 0 ? (
+                <ol className="flex flex-col gap-2">
+                  {speakerList.map((d, i) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-left"
+                    >
+                      <span className="flex size-5 items-center justify-center rounded-full bg-secondary text-xs font-semibold tabular-nums text-secondary-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="truncate text-sm font-medium">
+                        {d.delegation}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-auto size-7"
+                        onClick={() => removeSpeaker(d.id)}
+                        aria-label={`Remove ${d.delegation} from speakers`}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
               {speaker ? (
                 <Button
                   variant="outline"
@@ -289,6 +363,59 @@ export function PresentationMode({
                   Clear current speaker
                 </Button>
               ) : null}
+            </div>
+
+            {/* Points of information: "+1" logs a POI and removes the delegate. */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Points of Information
+              </h3>
+              <DelegateCombobox
+                delegates={availableForPoi}
+                value={null}
+                onChange={(id) => {
+                  if (id) addPoi(id)
+                }}
+                placeholder="Add delegate to POI queue…"
+              />
+              {poiList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No delegates queued for points of information.
+                </p>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {poiList.map((d, i) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-left"
+                    >
+                      <span className="flex size-5 items-center justify-center rounded-full bg-secondary text-xs font-semibold tabular-nums text-secondary-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="truncate text-sm font-medium">
+                        {d.delegation}
+                      </span>
+                      <Button
+                        size="sm"
+                        className="ml-auto h-7 px-2"
+                        onClick={() => recordPoi(d.id)}
+                      >
+                        <Plus className="size-3.5" />
+                        POI
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        onClick={() => removePoi(d.id)}
+                        aria-label={`Remove ${d.delegation} from POI queue`}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           </aside>
         ) : null}
